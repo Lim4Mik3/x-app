@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <!-- Wifi/signal-like icon representing "sinal" -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M12,18c-0.55,0 -1,0.45 -1,1s0.45,1 1,1 1,-0.45 1,-1 -0.45,-1 -1,-1zM6.34,14.66c-0.39,0.39 -0.39,1.02 0,1.41 0.39,0.39 1.02,0.39 1.41,0C9.17,14.65 10.53,14 12,14s2.83,0.65 4.24,2.07c0.39,0.39 1.02,0.39 1.41,0 0.39,-0.39 0.39,-1.02 0,-1.41C15.68,12.69 13.89,12 12,12s-3.68,0.69 -5.66,2.66zM2.1,10.1c-0.39,0.39 -0.39,1.02 0,1.41 0.39,0.39 1.02,0.39 1.41,0C6.37,8.64 9.1,7 12,7s5.63,1.64 8.49,4.51c0.39,0.39 1.02,0.39 1.41,0 0.39,-0.39 0.39,-1.02 0,-1.41C18.55,6.75 15.37,5 12,5S5.45,6.75 2.1,10.1z" />
+</vector>

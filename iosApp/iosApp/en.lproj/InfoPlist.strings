@@ -1,0 +1,3 @@
+"NSCameraUsageDescription" = "The app needs camera access to capture photos and videos.";
+"NSMicrophoneUsageDescription" = "The app needs microphone access to record audio and videos.";
+"NSLocationWhenInUseUsageDescription" = "The app needs your location to show the map.";

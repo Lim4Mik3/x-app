@@ -1,0 +1,77 @@
+/* Tabs */
+"tab_home" = "Início";
+"tab_my_posts" = "Meus Posts";
+"tab_profile" = "Perfil";
+
+/* Create Post */
+"new_post" = "Novo post";
+"close" = "Fechar";
+"post_placeholder" = "No que você está pensando?";
+"publish" = "Publicar";
+"cancel_recording" = "Cancelar gravação";
+"send_audio" = "Enviar áudio";
+"record_audio" = "Gravar áudio";
+
+/* Profile */
+"profile_title" = "Perfil";
+"profile_empty" = "Suas informações de perfil aparecerão aqui";
+
+/* My Posts */
+"my_posts_title" = "Meus Posts";
+"my_posts_empty" = "Seus posts aparecerão aqui";
+
+/* Camera */
+"camera_close" = "Fechar";
+"camera_hint" = "Toque para foto · Segure para vídeo";
+"camera_permission_denied" = "Permissão de câmera negada. Abra as configurações para permitir o acesso.";
+"camera_permission_needed" = "O app precisa de acesso à câmera e microfone para capturar fotos e vídeos.";
+"open_settings" = "Abrir Configurações";
+"allow_access" = "Permitir Acesso";
+
+/* Location */
+"select_location" = "Selecionar localização";
+
+/* Mood */
+"mood_title" = "Humor";
+"mood_calm" = "Tranquilo";
+"mood_updated" = "Atualizado 2min atrás";
+"time_ago" = "2min atrás";
+
+/* Map */
+"back" = "Voltar";
+"search_address" = "Buscar endereço…";
+"move_map_to_select" = "Mova o mapa para selecionar";
+"confirm_location" = "Confirmar localização";
+"location_precision_title" = "Onde aconteceu?";
+"location_precision_hint" = "Marque no mapa o local exato do ocorrido.";
+
+/* Profile */
+"language_label" = "Idioma";
+
+/* Review Post */
+"review_title" = "Revisar publicação";
+"review_location_label" = "Localização";
+"review_text_label" = "Conteúdo";
+"confirm_publish" = "Confirmar e publicar";
+"skip_media" = "Pular";
+"review_media_label" = "Mídia";
+"review_subtitle" = "Confira os detalhes antes de publicar";
+"no_media_attached" = "Nenhuma mídia anexada";
+
+/* Profile - Detail */
+"profile_section_personal" = "Informações Pessoais";
+"profile_email" = "E-mail";
+"profile_phone" = "Telefone";
+"profile_address" = "Endereço";
+"profile_location" = "Localização";
+"profile_section_location" = "Localização";
+"profile_section_preferences" = "Preferências";
+"pref_notifications" = "Notificações";
+"profile_section_connected" = "Contas Conectadas";
+"connected_google" = "Google";
+"connected_apple" = "Apple";
+"connected_facebook" = "Facebook";
+"connected_status" = "Conectado";
+"connected_connect" = "Conectar";
+"profile_change_photo" = "Alterar foto";
+"profile_logout" = "Sair da conta";

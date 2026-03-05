@@ -1,0 +1,48 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# IDE - Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.navigation/
+
+# Local properties (contains SDK path, secrets, etc.)
+local.properties
+
+# Android
+*.apk
+*.aar
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Kotlin
+.kotlin/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# iOS
+iosApp/iosApp.xcodeproj/project.xcworkspace/xcuserdata/
+iosApp/iosApp.xcodeproj/xcuserdata/
+iosApp/Pods/
+iosApp/.build/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Claude
+.claude/

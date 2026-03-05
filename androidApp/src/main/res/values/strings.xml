@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">KotlinFirstApp</string>
+    <string name="tab_home">Início</string>
+    <string name="tab_my_posts">Meus Posts</string>
+    <string name="tab_profile">Perfil</string>
+    <string name="new_post">Novo post</string>
+    <string name="close">Fechar</string>
+    <string name="post_placeholder">No que você está pensando?</string>
+    <string name="publish">Publicar</string>
+    <string name="cancel_recording">Cancelar gravação</string>
+    <string name="send_audio">Enviar áudio</string>
+    <string name="record_audio">Gravar áudio</string>
+    <string name="profile_title">Perfil</string>
+    <string name="profile_empty">Suas informações de perfil aparecerão aqui</string>
+    <string name="my_posts_title">Meus Posts</string>
+    <string name="my_posts_empty">Seus posts aparecerão aqui</string>
+    <string name="camera_close">Fechar</string>
+    <string name="camera_hint">Toque para foto · Segure para vídeo</string>
+    <string name="camera_permission_denied">Permissão de câmera negada. Abra as configurações para permitir o acesso.</string>
+    <string name="camera_permission_needed">O app precisa de acesso à câmera e microfone para capturar fotos e vídeos.</string>
+    <string name="open_settings">Abrir Configurações</string>
+    <string name="allow_access">Permitir Acesso</string>
+    <string name="select_location">Selecionar localização</string>
+    <string name="mood_title">Humor</string>
+    <string name="mood_calm">Tranquilo</string>
+    <string name="mood_updated">Atualizado 2min atrás</string>
+    <string name="time_ago">2min atrás</string>
+    <string name="back">Voltar</string>
+    <string name="search_address">Buscar endereço…</string>
+    <string name="move_map_to_select">Mova o mapa para selecionar</string>
+    <string name="confirm_location">Confirmar localização</string>
+    <string name="my_location">Minha localização</string>
+    <string name="location_precision_title">Onde aconteceu?</string>
+    <string name="location_precision_hint">Marque no mapa o local exato do ocorrido.</string>
+    <string name="language_label">Idioma</string>
+    <string name="review_title">Revisar publicação</string>
+    <string name="review_location_label">Localização</string>
+    <string name="review_text_label">Conteúdo</string>
+    <string name="confirm_publish">Confirmar e publicar</string>
+    <string name="skip_media">Pular</string>
+    <string name="review_media_label">Mídia</string>
+    <string name="review_subtitle">Confira os detalhes antes de publicar</string>
+    <string name="no_media_attached">Nenhuma mídia anexada</string>
+
+    <!-- Profile -->
+    <string name="profile_section_personal">Informações Pessoais</string>
+    <string name="profile_email">E-mail</string>
+    <string name="profile_phone">Telefone</string>
+    <string name="profile_address">Endereço</string>
+    <string name="profile_location">Localização</string>
+    <string name="profile_section_location">Localização</string>
+    <string name="profile_section_preferences">Preferências</string>
+    <string name="pref_notifications">Notificações</string>
+    <string name="profile_section_connected">Contas Conectadas</string>
+    <string name="connected_google">Google</string>
+    <string name="connected_apple">Apple</string>
+    <string name="connected_facebook">Facebook</string>
+    <string name="connected_status">Conectado</string>
+    <string name="connected_connect">Conectar</string>
+    <string name="profile_change_photo">Alterar foto</string>
+    <string name="profile_logout">Sair da conta</string>
+</resources>

@@ -1,0 +1,77 @@
+/* Tabs */
+"tab_home" = "Home";
+"tab_my_posts" = "My Posts";
+"tab_profile" = "Profile";
+
+/* Create Post */
+"new_post" = "New post";
+"close" = "Close";
+"post_placeholder" = "What are you thinking about?";
+"publish" = "Publish";
+"cancel_recording" = "Cancel recording";
+"send_audio" = "Send audio";
+"record_audio" = "Record audio";
+
+/* Profile */
+"profile_title" = "Profile";
+"profile_empty" = "Your profile info will appear here";
+
+/* My Posts */
+"my_posts_title" = "My Posts";
+"my_posts_empty" = "Your posts will appear here";
+
+/* Camera */
+"camera_close" = "Close";
+"camera_hint" = "Tap for photo · Hold for video";
+"camera_permission_denied" = "Camera permission denied. Open settings to allow access.";
+"camera_permission_needed" = "The app needs camera and microphone access to capture photos and videos.";
+"open_settings" = "Open Settings";
+"allow_access" = "Allow Access";
+
+/* Location */
+"select_location" = "Select location";
+
+/* Mood */
+"mood_title" = "Mood";
+"mood_calm" = "Calm";
+"mood_updated" = "Updated 2min ago";
+"time_ago" = "2min ago";
+
+/* Map */
+"back" = "Back";
+"search_address" = "Search address…";
+"move_map_to_select" = "Move the map to select";
+"confirm_location" = "Confirm location";
+"location_precision_title" = "Where did it happen?";
+"location_precision_hint" = "Mark the exact location on the map.";
+
+/* Profile */
+"language_label" = "Language";
+
+/* Review Post */
+"review_title" = "Review post";
+"review_location_label" = "Location";
+"review_text_label" = "Content";
+"confirm_publish" = "Confirm and publish";
+"skip_media" = "Skip";
+"review_media_label" = "Media";
+"review_subtitle" = "Check the details before publishing";
+"no_media_attached" = "No media attached";
+
+/* Profile - Detail */
+"profile_section_personal" = "Personal Information";
+"profile_email" = "Email";
+"profile_phone" = "Phone";
+"profile_address" = "Address";
+"profile_location" = "Location";
+"profile_section_location" = "Location";
+"profile_section_preferences" = "Preferences";
+"pref_notifications" = "Notifications";
+"profile_section_connected" = "Connected Accounts";
+"connected_google" = "Google";
+"connected_apple" = "Apple";
+"connected_facebook" = "Facebook";
+"connected_status" = "Connected";
+"connected_connect" = "Connect";
+"profile_change_photo" = "Change photo";
+"profile_logout" = "Log out";

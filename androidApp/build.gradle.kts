@@ -51,5 +51,8 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.navigation.compose)
     implementation(libs.coil.compose)
+    implementation(libs.okhttp)
+    implementation(libs.play.services.auth)
+    implementation(libs.lifecycle.viewmodel.compose)
     debugImplementation(libs.compose.ui.tooling)
 }

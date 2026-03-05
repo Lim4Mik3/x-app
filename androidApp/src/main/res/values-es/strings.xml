@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KotlinFirstApp</string>
+    <string name="app_name">X</string>
     <string name="tab_home">Inicio</string>
     <string name="tab_my_posts">Mis Posts</string>
     <string name="tab_profile">Perfil</string>
@@ -15,32 +15,9 @@
     <string name="profile_empty">Tu información de perfil aparecerá aquí</string>
     <string name="my_posts_title">Mis Posts</string>
     <string name="my_posts_empty">Tus publicaciones aparecerán aquí</string>
-    <string name="camera_close">Cerrar</string>
-    <string name="camera_hint">Toca para foto · Mantén para video</string>
-    <string name="camera_permission_denied">Permiso de cámara denegado. Abre la configuración para permitir el acceso.</string>
-    <string name="camera_permission_needed">La app necesita acceso a la cámara y micrófono para capturar fotos y videos.</string>
-    <string name="open_settings">Abrir Configuración</string>
-    <string name="allow_access">Permitir Acceso</string>
     <string name="select_location">Seleccionar ubicación</string>
-    <string name="mood_title">Estado</string>
-    <string name="mood_calm">Tranquilo</string>
-    <string name="mood_updated">Actualizado hace 2min</string>
-    <string name="time_ago">hace 2min</string>
-    <string name="back">Volver</string>
-    <string name="search_address">Buscar dirección…</string>
-    <string name="move_map_to_select">Mueve el mapa para seleccionar</string>
-    <string name="confirm_location">Confirmar ubicación</string>
-    <string name="my_location">Mi ubicación</string>
-    <string name="location_precision_title">¿Dónde ocurrió?</string>
-    <string name="location_precision_hint">Marca en el mapa el lugar exacto del hecho.</string>
     <string name="language_label">Idioma</string>
-    <string name="review_title">Revisar publicación</string>
-    <string name="review_location_label">Ubicación</string>
-    <string name="review_text_label">Contenido</string>
-    <string name="confirm_publish">Confirmar y publicar</string>
-    <string name="review_subtitle">Revisa los detalles antes de publicar</string>
-    <string name="review_media_label">Medios</string>
-    <string name="no_media_attached">Sin medios adjuntos</string>
+    <string name="back">Volver</string>
     <string name="skip_media">Saltar</string>
 
     <!-- Profile -->

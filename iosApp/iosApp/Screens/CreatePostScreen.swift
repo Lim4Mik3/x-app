@@ -1,15 +1,17 @@
 import SwiftUI
 
 struct CreatePostScreen: View {
-    var text: String = ""
-    var onTextChanged: (String) -> Void = { _ in }
     var onDismiss: () -> Void
-    var onPublish: () -> Void = {}
+    var onPostCreated: () -> Void = {}
+
+    @State private var text = ""
+    @State private var isPublishing = false
+    @State private var errorMessage: String?
     @State private var isRecording = false
     @State private var recordingSeconds = 0
     @State private var wavePhases: [Bool] = Array(repeating: false, count: 20)
+
     @Environment(\.appColors) private var colors
-    @EnvironmentObject var lang: LanguageManager
 
     let recordingTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -17,7 +19,7 @@ struct CreatePostScreen: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text(lang.s("new_post"))
+                Text("Novo post")
                     .font(.system(size: 17, weight: .semibold))
                     .tracking(-0.2)
                     .foregroundColor(colors.textPrimary)
@@ -34,22 +36,17 @@ struct CreatePostScreen: View {
             .padding(.top, 8)
             .padding(.bottom, 16)
 
-            Rectangle()
-                .fill(colors.divider)
-                .frame(height: 0.5)
+            Rectangle().fill(colors.divider).frame(height: 0.5)
 
             // Text editor
-            TextEditor(text: Binding(
-                get: { text },
-                set: { onTextChanged($0) }
-            ))
+            TextEditor(text: $text)
                 .font(.system(size: 16))
                 .foregroundColor(colors.textPrimary)
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)
                 .overlay(alignment: .topLeading) {
                     if text.isEmpty {
-                        Text(lang.s("post_placeholder"))
+                        Text("No que você está pensando?")
                             .font(.system(size: 16))
                             .foregroundColor(colors.textSecondary)
                             .padding(.horizontal, 5)
@@ -61,41 +58,54 @@ struct CreatePostScreen: View {
                 .padding(.top, 8)
                 .frame(maxHeight: .infinity)
 
+            // Error
+            if let error = errorMessage {
+                Text(error)
+                    .font(.system(size: 12))
+                    .foregroundColor(colors.destructive)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 4)
+            }
+
             // Bottom bar
-            Rectangle()
-                .fill(colors.divider)
-                .frame(height: 0.5)
+            Rectangle().fill(colors.divider).frame(height: 0.5)
 
             HStack(spacing: 10) {
-                // Main button: Publicar or Recording (X + waves + timer)
+                // Main button: Publicar or Recording
                 ZStack {
                     // Publish mode
-                    Button(action: onPublish) {
+                    Button(action: publishPost) {
                         HStack(spacing: 8) {
-                            Image(systemName: "paperplane.fill")
-                                .font(.system(size: 15, weight: .medium))
-                            Text(lang.s("publish"))
-                                .font(.system(size: 15, weight: .semibold))
+                            if isPublishing {
+                                ProgressView()
+                                    .tint(colors.onAccent)
+                                Text("Publicando...")
+                                    .font(.system(size: 15, weight: .semibold))
+                            } else {
+                                Image(systemName: "paperplane.fill")
+                                    .font(.system(size: 15, weight: .medium))
+                                Text("Publicar")
+                                    .font(.system(size: 15, weight: .semibold))
+                            }
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 48)
-                        .background(colors.accent)
+                        .background(text.isEmpty || isPublishing ? colors.accent.opacity(0.3) : colors.accent)
                         .foregroundColor(colors.onAccent)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     .buttonStyle(.plain)
-                    .disabled(false)
+                    .disabled(text.isEmpty || isPublishing)
                     .opacity(isRecording ? 0 : 1)
 
                     // Recording mode
                     HStack(spacing: 0) {
-                        // X cancel button
-                        Button(action: {
+                        Button {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 isRecording = false
                                 stopWaveAnimation()
                             }
-                        }) {
+                        } label: {
                             Image(systemName: "xmark")
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(colors.textSecondary)
@@ -103,17 +113,14 @@ struct CreatePostScreen: View {
                         }
                         .buttonStyle(.plain)
 
-                        // Waves filling center
                         AudioWaveBars(barColor: colors.accent, phases: wavePhases)
                             .frame(maxWidth: .infinity)
 
-                        // Timer on the right
                         Text(formatTime(recordingSeconds))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(colors.textSecondary)
                             .monospacedDigit()
-                            .padding(.leading, 12)
-                            .padding(.trailing, 12)
+                            .padding(.horizontal, 12)
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
@@ -123,11 +130,10 @@ struct CreatePostScreen: View {
                 }
                 .animation(.easeInOut(duration: 0.3), value: isRecording)
 
-                // Mic (start) / Send audio button
-                Button(action: {
+                // Mic / Send audio button
+                Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         if isRecording {
-                            // TODO: enviar áudio
                             isRecording = false
                             stopWaveAnimation()
                         } else {
@@ -136,7 +142,7 @@ struct CreatePostScreen: View {
                             startWaveAnimation()
                         }
                     }
-                }) {
+                } label: {
                     ZStack {
                         Image(systemName: "mic")
                             .font(.system(size: 18, weight: .medium))
@@ -159,8 +165,59 @@ struct CreatePostScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(colors.background)
         .onReceive(recordingTimer) { _ in
-            if isRecording {
-                recordingSeconds += 1
+            if isRecording { recordingSeconds += 1 }
+        }
+    }
+
+    private func publishPost() {
+        guard !text.isEmpty, !isPublishing else { return }
+        isPublishing = true
+        errorMessage = nil
+
+        Task {
+            let loc = LocationService.shared.cachedLocation
+            guard let loc = loc else {
+                LocationService.shared.fetch(forceRefresh: true)
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                guard let loc2 = LocationService.shared.cachedLocation else {
+                    await MainActor.run {
+                        errorMessage = "Localização não disponível"
+                        isPublishing = false
+                    }
+                    return
+                }
+                do {
+                    _ = try await ApiClient.shared.createPost(
+                        text: text, lat: loc2.coordinate.latitude, lng: loc2.coordinate.longitude
+                    )
+                    await MainActor.run {
+                        isPublishing = false
+                        onPostCreated()
+                        onDismiss()
+                    }
+                } catch {
+                    await MainActor.run {
+                        isPublishing = false
+                        errorMessage = error.localizedDescription
+                    }
+                }
+                return
+            }
+
+            do {
+                _ = try await ApiClient.shared.createPost(
+                    text: text, lat: loc.coordinate.latitude, lng: loc.coordinate.longitude
+                )
+                await MainActor.run {
+                    isPublishing = false
+                    onPostCreated()
+                    onDismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    isPublishing = false
+                    errorMessage = error.localizedDescription
+                }
             }
         }
     }
@@ -208,8 +265,4 @@ struct AudioWaveBars: View {
         }
         .frame(height: 22)
     }
-}
-
-#Preview {
-    CreatePostScreen(onDismiss: {})
 }

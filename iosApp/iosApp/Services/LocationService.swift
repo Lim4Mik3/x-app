@@ -7,7 +7,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
 
     private let manager = CLLocationManager()
     private var lastFetchTime: Date?
-    private var ttl: TimeInterval = 30 // 30 seconds default
+    private var ttl: TimeInterval = 60 // 60 seconds (1 minute)
 
     @Published var location: CLLocation?
     @Published var authorized = false

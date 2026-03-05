@@ -1,11 +1,10 @@
 package com.example.app.android.screens
 
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
+import android.Manifest
+import android.location.Geocoder
+import android.location.Location
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -21,14 +20,17 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -37,61 +39,140 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.app.android.components.BottomTabBar
+import com.example.app.android.components.CommentSheet
 import com.example.app.android.components.CreatePostFab
 import com.example.app.android.components.Feed
 import com.example.app.android.components.Header
+import com.example.app.android.components.ReportSheet
+import com.example.app.android.components.SignalSheet
 import com.example.app.android.components.Tab
-import com.example.app.android.components.mockPosts
 import com.example.app.android.components.rememberScrollAwareState
 import com.example.app.android.navigation.OverlayRoute
 import com.example.app.android.navigation.navigateOnce
+import com.example.app.android.network.ApiClient
+import com.example.app.android.network.TokenManager
+import com.example.app.android.network.models.FeedPost
+import com.example.app.android.services.LocationService
 import com.example.app.android.theme.AppTheme
-import androidx.compose.ui.res.stringResource
-import android.net.Uri
-import com.example.app.android.R
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(onLogout: () -> Unit = {}) {
     val colors = AppTheme.colors
-    var selectedLocation by remember { mutableStateOf("Osasco") }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+
+    // Navigation
     var selectedTab by remember { mutableStateOf(Tab.Home) }
-    var draftPostText by remember { mutableStateOf("") }
-    var draftLocation by remember { mutableStateOf("Osasco") }
+    val navController = rememberNavController()
     val feedListState = rememberLazyListState()
     val scrollAwareState = rememberScrollAwareState()
-    val density = LocalDensity.current
-    var draftMediaUri by remember { mutableStateOf<Uri?>(null) }
-    val navController = rememberNavController()
+
+    // Location
+    val locationService = remember { LocationService.getInstance(context) }
+    val userLocation by locationService.location.collectAsState()
+    var locationName by remember { mutableStateOf("Carregando...") }
+
+    // Feed state
+    var feedPosts by remember { mutableStateOf<List<FeedPost>>(emptyList()) }
+    var isFeedLoading by remember { mutableStateOf(false) }
+    var feedCursor by remember { mutableStateOf<String?>(null) }
+    var hasMore by remember { mutableStateOf(true) }
+
+    // Interaction sheets
+    var showCommentForPost by remember { mutableStateOf<FeedPost?>(null) }
+    var showSignalForPost by remember { mutableStateOf<FeedPost?>(null) }
+    var showReportForPost by remember { mutableStateOf<FeedPost?>(null) }
+
+    // Location permissions
+    val locationPermissions = rememberMultiplePermissionsState(
+        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+    )
+
+    // Request permissions on launch
+    LaunchedEffect(Unit) {
+        if (!locationPermissions.allPermissionsGranted) {
+            locationPermissions.launchMultiplePermissionRequest()
+        }
+    }
+
+    // Fetch location when permissions granted
+    LaunchedEffect(locationPermissions.allPermissionsGranted) {
+        if (locationPermissions.allPermissionsGranted) {
+            locationService.fetch(forceRefresh = true)
+        }
+    }
+
+    // Reverse geocode for header
+    LaunchedEffect(userLocation) {
+        val loc = userLocation ?: return@LaunchedEffect
+        try {
+            @Suppress("DEPRECATION")
+            val geocoder = Geocoder(context, Locale.getDefault())
+            @Suppress("DEPRECATION")
+            val addresses = geocoder.getFromLocation(loc.latitude, loc.longitude, 1)
+            val addr = addresses?.firstOrNull()
+            locationName = addr?.subLocality ?: addr?.locality ?: addr?.subAdminArea ?: "Ao seu redor"
+        } catch (_: Exception) {
+            locationName = "Ao seu redor"
+        }
+    }
+
+    // Load feed when location available
+    fun loadFeed(refresh: Boolean = false) {
+        val loc = userLocation ?: return
+        if (isFeedLoading) return
+
+        scope.launch {
+            isFeedLoading = true
+            if (refresh) {
+                feedCursor = null
+                hasMore = true
+            }
+
+            val cursor = if (refresh) null else feedCursor
+            ApiClient.getFeed(loc.latitude, loc.longitude, limit = 20, cursor = cursor).fold(
+                onSuccess = { response ->
+                    feedPosts = if (refresh) response.posts else feedPosts + response.posts
+                    feedCursor = response.nextCursor
+                    hasMore = response.hasMore
+                },
+                onFailure = { /* silently handle */ }
+            )
+            isFeedLoading = false
+        }
+    }
+
+    // Initial feed load when location becomes available
+    LaunchedEffect(userLocation) {
+        if (userLocation != null && feedPosts.isEmpty()) {
+            loadFeed(refresh = true)
+        }
+    }
 
     LaunchedEffect(selectedTab) {
         scrollAwareState.reset()
     }
 
     Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
-        // Header overlay
+        // Header
         if (selectedTab == Tab.Home) {
             Box(
                 modifier = Modifier
                     .zIndex(2f)
-                    .offset {
-                        IntOffset(0, scrollAwareState.topBarOffsetPx.roundToInt())
-                    }
-                    .onGloballyPositioned {
-                        scrollAwareState.topBarHeightPx = it.size.height.toFloat()
-                    }
+                    .offset { IntOffset(0, scrollAwareState.topBarOffsetPx.roundToInt()) }
+                    .onGloballyPositioned { scrollAwareState.topBarHeightPx = it.size.height.toFloat() }
                     .background(colors.surface)
             ) {
-                Header(
-                    locationName = selectedLocation,
-                    timeAgo = stringResource(R.string.time_ago),
-                    statusLabel = stringResource(R.string.mood_calm),
-                    onLocationClick = { navController.navigateOnce(OverlayRoute.LocationPicker.route) },
-                    onMoodClick = { navController.navigateOnce(OverlayRoute.MoodDetail.route) }
-                )
+                Header(locationName = locationName)
             }
 
-            // Persistent divider at status bar level
             Box(
                 modifier = Modifier
                     .zIndex(1f)
@@ -102,11 +183,22 @@ fun MainScreen() {
             )
         }
 
-        // Content — feed scrolls behind the bars
+        // Content
         when (selectedTab) {
             Tab.Home -> Feed(
-                posts = mockPosts,
+                posts = feedPosts,
                 listState = feedListState,
+                isLoading = isFeedLoading,
+                userLocation = userLocation,
+                onSignalClick = { showSignalForPost = it },
+                onCommentClick = { showCommentForPost = it },
+                onShareClick = { /* TODO: share intent */ },
+                onReportClick = { showReportForPost = it },
+                onLoadMore = {
+                    if (hasMore && !isFeedLoading && feedCursor != null) {
+                        loadFeed()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(scrollAwareState.nestedScrollConnection),
@@ -123,11 +215,18 @@ fun MainScreen() {
             Tab.Profile -> ProfileScreen(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = with(density) { scrollAwareState.bottomBarHeightPx.toDp() })
+                    .padding(bottom = with(density) { scrollAwareState.bottomBarHeightPx.toDp() }),
+                onLogout = {
+                    scope.launch {
+                        ApiClient.logout()
+                        TokenManager.clear()
+                        onLogout()
+                    }
+                }
             )
         }
 
-        // FAB — create new post
+        // FAB
         if (selectedTab == Tab.Home) {
             CreatePostFab(
                 onClick = { navController.navigateOnce(OverlayRoute.CreatePost.route) },
@@ -138,162 +237,61 @@ fun MainScreen() {
             )
         }
 
-        // Bottom bar overlay
+        // Bottom bar
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .zIndex(2f)
-                .offset {
-                    IntOffset(0, -scrollAwareState.bottomBarOffsetPx.roundToInt())
-                }
-                .onGloballyPositioned {
-                    scrollAwareState.bottomBarHeightPx = it.size.height.toFloat()
-                }
+                .offset { IntOffset(0, -scrollAwareState.bottomBarOffsetPx.roundToInt()) }
+                .onGloballyPositioned { scrollAwareState.bottomBarHeightPx = it.size.height.toFloat() }
                 .background(colors.surface)
         ) {
-            BottomTabBar(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
-            )
+            BottomTabBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
         }
 
-        // Overlay navigation
+        // Overlay navigation (only CreatePost now)
         Box(modifier = Modifier.fillMaxSize().zIndex(10f)) {
-            NavHost(
-                navController = navController,
-                startDestination = "empty"
-            ) {
+            NavHost(navController = navController, startDestination = "empty") {
                 composable("empty") {}
 
                 composable(
                     OverlayRoute.CreatePost.route,
                     enterTransition = { slideInHorizontally(tween(250)) { it } },
-                    exitTransition = {
-                        // When Map is pushed on top, stay in place (no animation)
-                        if (targetState.destination.route == OverlayRoute.Map.route) {
-                            ExitTransition.None
-                        } else {
-                            slideOutHorizontally(tween(250)) { it }
-                        }
-                    },
-                    popEnterTransition = {
-                        // When returning from Map, already visible underneath
-                        if (initialState.destination.route == OverlayRoute.Map.route) {
-                            EnterTransition.None
-                        } else {
-                            slideInHorizontally(tween(250)) { -it }
-                        }
-                    },
                     popExitTransition = { slideOutHorizontally(tween(250)) { it } }
                 ) {
                     CreatePostScreen(
-                        text = draftPostText,
-                        onTextChanged = { draftPostText = it },
                         onDismiss = {
-                            draftPostText = ""
                             navController.popBackStack("empty", inclusive = false)
                         },
-                        onPublish = {
-                            navController.navigateOnce(OverlayRoute.Map.route)
-                        }
-                    )
-                }
-
-                composable(
-                    OverlayRoute.Map.route,
-                    enterTransition = { slideInHorizontally(tween(250)) { it } },
-                    exitTransition = { slideOutHorizontally(tween(250)) { -it } },
-                    popEnterTransition = { slideInHorizontally(tween(250)) { -it } },
-                    popExitTransition = { slideOutHorizontally(tween(250)) { it } }
-                ) {
-                    MapScreen(
-                        onDismiss = {
-                            navController.popBackStack()
-                        },
-                        onLocationConfirmed = {
-                            draftLocation = "Osasco"
-                            navController.navigateOnce(OverlayRoute.Media.route)
-                        }
-                    )
-                }
-
-                composable(
-                    OverlayRoute.Media.route,
-                    enterTransition = { slideInHorizontally(tween(250)) { it } },
-                    exitTransition = { slideOutHorizontally(tween(250)) { -it } },
-                    popEnterTransition = { slideInHorizontally(tween(250)) { -it } },
-                    popExitTransition = { slideOutHorizontally(tween(250)) { it } }
-                ) {
-                    CameraScreen(
-                        visible = true,
-                        onDismiss = {
-                            navController.popBackStack()
-                        },
-                        onMediaCaptured = { uri ->
-                            draftMediaUri = uri
-                            navController.navigateOnce(OverlayRoute.ReviewPost.route)
-                        },
-                        onSkip = {
-                            draftMediaUri = null
-                            navController.navigateOnce(OverlayRoute.ReviewPost.route)
-                        }
-                    )
-                }
-
-                composable(
-                    OverlayRoute.ReviewPost.route,
-                    enterTransition = { slideInHorizontally(tween(250)) { it } },
-                    exitTransition = { slideOutHorizontally(tween(250)) { it } },
-                    popEnterTransition = { slideInHorizontally(tween(250)) { -it } },
-                    popExitTransition = { slideOutHorizontally(tween(250)) { it } }
-                ) {
-                    ReviewPostScreen(
-                        postText = draftPostText,
-                        location = draftLocation,
-                        mediaUri = draftMediaUri,
-                        onDismiss = {
-                            draftPostText = ""
-                            draftMediaUri = null
-                            navController.popBackStack("empty", inclusive = false)
-                        },
-                        onConfirm = {
-                            draftPostText = ""
-                            draftMediaUri = null
-                            navController.popBackStack("empty", inclusive = false)
-                        }
-                    )
-                }
-
-                composable(
-                    OverlayRoute.LocationPicker.route,
-                    enterTransition = { slideInVertically(tween(150)) { it } },
-                    exitTransition = { fadeOut(tween(50)) },
-                    popExitTransition = { fadeOut(tween(50)) }
-                ) {
-                    LocationPickerScreen(
-                        onDismiss = {
-                            navController.popBackStack()
-                        },
-                        onLocationSelected = { location ->
-                            selectedLocation = location
-                            navController.popBackStack()
-                        }
-                    )
-                }
-
-                composable(
-                    OverlayRoute.MoodDetail.route,
-                    enterTransition = { slideInVertically(tween(150)) { it } },
-                    exitTransition = { fadeOut(tween(50)) },
-                    popExitTransition = { fadeOut(tween(50)) }
-                ) {
-                    MoodDetailScreen(
-                        onDismiss = {
-                            navController.popBackStack()
+                        onPostCreated = {
+                            loadFeed(refresh = true)
                         }
                     )
                 }
             }
+        }
+
+        // Interaction sheets
+        if (showCommentForPost != null) {
+            CommentSheet(
+                postId = showCommentForPost!!.id,
+                onDismiss = { showCommentForPost = null }
+            )
+        }
+
+        if (showSignalForPost != null) {
+            SignalSheet(
+                postId = showSignalForPost!!.id,
+                postType = showSignalForPost!!.type,
+                onDismiss = { showSignalForPost = null }
+            )
+        }
+
+        if (showReportForPost != null) {
+            ReportSheet(
+                postId = showReportForPost!!.id,
+                onDismiss = { showReportForPost = null }
+            )
         }
     }
 }

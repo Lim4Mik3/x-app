@@ -2,11 +2,6 @@ import SwiftUI
 
 enum OverlayRoute: Hashable {
     case createPost
-    case map
-    case locationPicker
-    case moodDetail
-    case media
-    case reviewPost
 }
 
 class OverlayNavigator: ObservableObject {

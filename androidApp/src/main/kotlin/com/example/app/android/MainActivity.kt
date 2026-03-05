@@ -7,15 +7,25 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.example.app.android.network.TokenManager
+import com.example.app.android.screens.LoginScreen
 import com.example.app.android.screens.MainScreen
 import com.example.app.android.theme.AppTheme
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        TokenManager.init(this)
         enableEdgeToEdge()
+
         setContent {
             val isDark = isSystemInDarkTheme()
+            var isLoggedIn by remember { mutableStateOf(TokenManager.isLoggedIn) }
+
             LaunchedEffect(isDark) {
                 enableEdgeToEdge(
                     statusBarStyle = if (isDark) {
@@ -36,8 +46,15 @@ class MainActivity : AppCompatActivity() {
                     }
                 )
             }
+
             AppTheme(darkTheme = isDark) {
-                MainScreen()
+                if (isLoggedIn) {
+                    MainScreen(onLogout = { isLoggedIn = false })
+                } else {
+                    LoginScreen(
+                        onLoginSuccess = { isLoggedIn = true }
+                    )
+                }
             }
         }
     }

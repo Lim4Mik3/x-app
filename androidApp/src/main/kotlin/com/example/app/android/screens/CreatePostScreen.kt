@@ -27,12 +27,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -42,253 +42,256 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.stringResource
-import com.example.app.android.R
-import com.example.app.android.theme.AppTheme
 import com.example.app.android.components.SafeScreen
+import com.example.app.android.network.ApiClient
+import com.example.app.android.services.LocationService
+import com.example.app.android.theme.AppTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun CreatePostScreen(
-    text: String = "",
-    onTextChanged: (String) -> Unit = {},
     onDismiss: () -> Unit,
-    onPublish: () -> Unit = {}
+    onPostCreated: () -> Unit = {}
 ) {
     SafeScreen(
         backgroundColor = AppTheme.colors.background,
         modifier = Modifier.clipToBounds()
     ) {
-            val colors = AppTheme.colors
-            var isRecording by remember { mutableStateOf(false) }
-            var recordingSeconds by remember { mutableIntStateOf(0) }
+        val colors = AppTheme.colors
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
 
-            // Timer for recording
-            LaunchedEffect(isRecording) {
-                if (isRecording) {
-                    recordingSeconds = 0
-                    while (true) {
-                        delay(1000L)
-                        recordingSeconds++
-                    }
+        var text by remember { mutableStateOf("") }
+        var isPublishing by remember { mutableStateOf(false) }
+        var errorMessage by remember { mutableStateOf<String?>(null) }
+        var isRecording by remember { mutableStateOf(false) }
+        var recordingSeconds by remember { mutableIntStateOf(0) }
+
+        LaunchedEffect(isRecording) {
+            if (isRecording) {
+                recordingSeconds = 0
+                while (true) {
+                    delay(1000L)
+                    recordingSeconds++
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+        ) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Novo post",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary,
+                    letterSpacing = 0.2.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Fechar",
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
 
-            Column(
+            Box(Modifier.fillMaxWidth().height(0.5.dp).background(colors.divider))
+
+            // Text field
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .imePadding()
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
-                // Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                if (text.isEmpty()) {
                     Text(
-                        text = stringResource(R.string.new_post),
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary,
-                        letterSpacing = 0.2.sp,
-                        modifier = Modifier.weight(1f)
+                        text = "No que voc\u00ea est\u00e1 pensando?",
+                        fontSize = 16.sp,
+                        color = colors.textSecondary
                     )
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = stringResource(R.string.close),
-                            tint = colors.textSecondary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
                 }
-
-                // Divider
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(0.5.dp)
-                        .background(colors.divider)
+                BasicTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier.fillMaxSize(),
+                    textStyle = TextStyle(fontSize = 16.sp, color = colors.textPrimary),
+                    cursorBrush = SolidColor(colors.accent)
                 )
+            }
 
-                // Text field
-                Box(
+            // Error
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage!!,
+                    fontSize = 12.sp,
+                    color = colors.destructive,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                )
+            }
+
+            // Bottom bar
+            Box(Modifier.fillMaxWidth().height(0.5.dp).background(colors.divider))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AnimatedContent(
+                    targetState = isRecording,
+                    transitionSpec = {
+                        fadeIn(tween(300)) togetherWith fadeOut(tween(300)) using SizeTransform(clip = false)
+                    },
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    if (text.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.post_placeholder),
-                            fontSize = 16.sp,
-                            color = colors.textSecondary
-                        )
-                    }
-                    BasicTextField(
-                        value = text,
-                        onValueChange = onTextChanged,
-                        modifier = Modifier.fillMaxSize(),
-                        textStyle = TextStyle(
-                            fontSize = 16.sp,
-                            color = colors.textPrimary
-                        ),
-                        cursorBrush = SolidColor(colors.accent)
-                    )
-                }
-
-                // Bottom bar
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(0.5.dp)
-                        .background(colors.divider)
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Main button: Publicar or Recording (X + waves + timer)
-                    AnimatedContent(
-                        targetState = isRecording,
-                        transitionSpec = {
-                            fadeIn(tween(300)) togetherWith fadeOut(tween(300)) using SizeTransform(clip = false)
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        label = "publishRecordingTransition"
-                    ) { recording ->
-                        if (recording) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(colors.surface),
-                                contentAlignment = Alignment.Center
+                        .height(48.dp),
+                    label = "publishRecordingTransition"
+                ) { recording ->
+                    if (recording) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(colors.surface),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 4.dp)
+                                IconButton(
+                                    onClick = { isRecording = false },
+                                    modifier = Modifier.size(40.dp)
                                 ) {
-                                    // X cancel button
-                                    IconButton(
-                                        onClick = { isRecording = false },
-                                        modifier = Modifier.size(40.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = stringResource(R.string.cancel_recording),
-                                            tint = colors.textSecondary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    // Waves filling the center
-                                    AudioWaveBars(
-                                        barColor = colors.accent,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    // Timer on the right
-                                    Text(
-                                        text = formatTime(recordingSeconds),
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = colors.textSecondary,
-                                        modifier = Modifier.padding(start = 12.dp, end = 12.dp)
-                                    )
+                                    Icon(Icons.Default.Close, "Cancelar", tint = colors.textSecondary, modifier = Modifier.size(20.dp))
                                 }
-                            }
-                        } else {
-                            Button(
-                                onClick = onPublish,
-                                enabled = true,
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = colors.accent,
-                                    contentColor = colors.onAccent,
-                                    disabledContainerColor = colors.accent.copy(alpha = 0.3f),
-                                    disabledContentColor = colors.onAccent.copy(alpha = 0.5f)
-                                ),
-                                modifier = Modifier
-                                    .fillMaxSize()
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Send,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                AudioWaveBars(barColor = colors.accent, modifier = Modifier.weight(1f))
                                 Text(
-                                    text = stringResource(R.string.publish),
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    text = formatTime(recordingSeconds),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = colors.textSecondary,
+                                    modifier = Modifier.padding(start = 12.dp, end = 12.dp)
                                 )
                             }
                         }
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    // Mic (start) / Send audio button
-                    AnimatedContent(
-                        targetState = isRecording,
-                        transitionSpec = {
-                            fadeIn(tween(200)) togetherWith fadeOut(tween(200))
-                        },
-                        label = "micSendTransition"
-                    ) { recording ->
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (recording) colors.accent else colors.surface)
-                                .clickable {
-                                    if (isRecording) {
-                                        // TODO: enviar áudio
-                                        isRecording = false
-                                    } else {
-                                        isRecording = true
+                    } else {
+                        Button(
+                            onClick = {
+                                if (text.isBlank()) return@Button
+                                isPublishing = true
+                                errorMessage = null
+                                scope.launch {
+                                    val locationService = LocationService.getInstance(context)
+                                    locationService.fetch()
+                                    // Wait briefly for location
+                                    delay(500)
+                                    val loc = locationService.cachedLocation
+                                    if (loc == null) {
+                                        errorMessage = "Localiza\u00e7\u00e3o n\u00e3o dispon\u00edvel. Verifique as permiss\u00f5es."
+                                        isPublishing = false
+                                        return@launch
                                     }
-                                },
-                            contentAlignment = Alignment.Center
+                                    ApiClient.createPost(text, loc.latitude, loc.longitude).fold(
+                                        onSuccess = {
+                                            isPublishing = false
+                                            onPostCreated()
+                                            onDismiss()
+                                        },
+                                        onFailure = { e ->
+                                            isPublishing = false
+                                            errorMessage = e.message ?: "Erro ao publicar"
+                                        }
+                                    )
+                                }
+                            },
+                            enabled = text.isNotBlank() && !isPublishing,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colors.accent,
+                                contentColor = colors.onAccent,
+                                disabledContainerColor = colors.accent.copy(alpha = 0.3f),
+                                disabledContentColor = colors.onAccent.copy(alpha = 0.5f)
+                            ),
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            if (recording) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Send,
-                                    contentDescription = stringResource(R.string.send_audio),
-                                    tint = colors.onAccent,
-                                    modifier = Modifier.size(20.dp)
+                            if (isPublishing) {
+                                CircularProgressIndicator(
+                                    color = colors.onAccent,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(18.dp)
                                 )
+                                Spacer(Modifier.width(8.dp))
+                                Text("Publicando...", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                             } else {
-                                Icon(
-                                    imageVector = Icons.Default.Mic,
-                                    contentDescription = stringResource(R.string.record_audio),
-                                    tint = colors.textSecondary,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                Icon(Icons.AutoMirrored.Filled.Send, null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Publicar", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                             }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.width(10.dp))
+
+                AnimatedContent(
+                    targetState = isRecording,
+                    transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
+                    label = "micSendTransition"
+                ) { recording ->
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (recording) colors.accent else colors.surface)
+                            .clickable {
+                                if (isRecording) {
+                                    isRecording = false
+                                } else {
+                                    isRecording = true
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (recording) {
+                            Icon(Icons.AutoMirrored.Filled.Send, "Enviar \u00e1udio", tint = colors.onAccent, modifier = Modifier.size(20.dp))
+                        } else {
+                            Icon(Icons.Default.Mic, "Gravar \u00e1udio", tint = colors.textSecondary, modifier = Modifier.size(20.dp))
                         }
                     }
                 }
             }
         }
+    }
 }
 
 @Composable
@@ -298,7 +301,6 @@ private fun AudioWaveBars(
 ) {
     val barCount = 20
     val infiniteTransition = rememberInfiniteTransition(label = "waveBars")
-
     val barHeights = List(barCount) { index ->
         infiniteTransition.animateFloat(
             initialValue = 6f,

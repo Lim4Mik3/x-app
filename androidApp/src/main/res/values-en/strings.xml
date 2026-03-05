@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KotlinFirstApp</string>
+    <string name="app_name">X</string>
     <string name="tab_home">Home</string>
     <string name="tab_my_posts">My Posts</string>
     <string name="tab_profile">Profile</string>
@@ -15,32 +15,9 @@
     <string name="profile_empty">Your profile info will appear here</string>
     <string name="my_posts_title">My Posts</string>
     <string name="my_posts_empty">Your posts will appear here</string>
-    <string name="camera_close">Close</string>
-    <string name="camera_hint">Tap for photo · Hold for video</string>
-    <string name="camera_permission_denied">Camera permission denied. Open settings to allow access.</string>
-    <string name="camera_permission_needed">The app needs camera and microphone access to capture photos and videos.</string>
-    <string name="open_settings">Open Settings</string>
-    <string name="allow_access">Allow Access</string>
     <string name="select_location">Select location</string>
-    <string name="mood_title">Mood</string>
-    <string name="mood_calm">Calm</string>
-    <string name="mood_updated">Updated 2min ago</string>
-    <string name="time_ago">2min ago</string>
-    <string name="back">Back</string>
-    <string name="search_address">Search address…</string>
-    <string name="move_map_to_select">Move the map to select</string>
-    <string name="confirm_location">Confirm location</string>
-    <string name="my_location">My location</string>
-    <string name="location_precision_title">Where did it happen?</string>
-    <string name="location_precision_hint">Mark the exact location on the map.</string>
     <string name="language_label">Language</string>
-    <string name="review_title">Review post</string>
-    <string name="review_location_label">Location</string>
-    <string name="review_text_label">Content</string>
-    <string name="confirm_publish">Confirm and publish</string>
-    <string name="review_subtitle">Check the details before publishing</string>
-    <string name="review_media_label">Media</string>
-    <string name="no_media_attached">No media attached</string>
+    <string name="back">Back</string>
     <string name="skip_media">Skip</string>
 
     <!-- Profile -->

@@ -1,11 +1,13 @@
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        MainScreen()
-    }
-}
+    @State private var isLoggedIn = TokenManager.shared.isLoggedIn
 
-#Preview {
-    ContentView()
+    var body: some View {
+        if isLoggedIn {
+            MainScreen(onLogout: { isLoggedIn = false })
+        } else {
+            LoginScreen(onLoginSuccess: { isLoggedIn = true })
+        }
+    }
 }

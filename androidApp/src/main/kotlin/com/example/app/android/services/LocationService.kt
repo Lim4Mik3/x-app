@@ -61,7 +61,7 @@ class LocationService private constructor(context: Context) {
     }
 
     companion object {
-        private const val DEFAULT_TTL_MS = 30_000L // 30 seconds
+        private const val DEFAULT_TTL_MS = 60_000L // 60 seconds (1 minute)
 
         @Volatile
         private var instance: LocationService? = null

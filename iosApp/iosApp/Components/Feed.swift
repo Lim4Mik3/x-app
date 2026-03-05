@@ -339,6 +339,8 @@ struct StoryViewer: View {
     @State private var progress: CGFloat = 0
     @State private var timer: Timer?
     @State private var dragOffset: CGFloat = 0
+    @State private var verticalDragOffset: CGFloat = 0
+    @State private var dragDirection: Int = 0 // 0=undecided, 1=horizontal, 2=vertical
     @State private var screenWidth: CGFloat = 390
 
     private let tickInterval: Double = 0.05
@@ -382,6 +384,8 @@ struct StoryViewer: View {
                     .offset(x: dragOffset)
                     .rotationEffect(.degrees(dragOffset != 0 ? Double(swipeProgress * -3) : 0))
             }
+            .offset(y: verticalDragOffset)
+            .opacity(verticalDragOffset > 0 ? Double(1 - min(verticalDragOffset / geo.size.height, 1) * 0.5) : 1)
             .onAppear {
                 screenWidth = geo.size.width
                 startProgress()
@@ -392,54 +396,96 @@ struct StoryViewer: View {
             .gesture(
                 DragGesture()
                     .onChanged { value in
-                        let translation = value.translation.width
-                        // Block movement at boundaries (no rubber band)
-                        if translation > 0 && !canGoPrevStory { return }
-                        if translation < 0 && !canGoNextStory { return }
-                        dragOffset = translation
-                        timer?.invalidate()
+                        let tx = value.translation.width
+                        let ty = value.translation.height
+
+                        // Decide direction once per gesture
+                        if dragDirection == 0 {
+                            if abs(tx) > abs(ty) && abs(tx) > 10 {
+                                dragDirection = 1 // horizontal
+                            } else if abs(ty) > abs(tx) && abs(ty) > 10 {
+                                dragDirection = 2 // vertical
+                            } else {
+                                return
+                            }
+                        }
+
+                        if dragDirection == 1 {
+                            if tx > 0 && !canGoPrevStory { return }
+                            if tx < 0 && !canGoNextStory { return }
+                            dragOffset = tx
+                            timer?.invalidate()
+                        } else if dragDirection == 2 && ty > 0 {
+                            // Resistance: logarithmic curve
+                            let screenH = geo.size.height
+                            let ratio = min(ty / screenH, 2)
+                            verticalDragOffset = screenH * (1 - (1 / (ratio * 0.85 + 1))) * 1.3
+                            timer?.invalidate()
+                        }
                     }
                     .onEnded { value in
-                        let normalized = dragOffset / screenWidth
+                        let dir = dragDirection
+                        dragDirection = 0
+                        let screenH = geo.size.height
 
-                        if normalized < -swipeThreshold && canGoNextStory {
-                            // Animate out smoothly, then switch
-                            withAnimation(.easeOut(duration: 0.18)) {
-                                dragOffset = -screenWidth
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                // Reset offset BEFORE changing index, no animations
-                                var t = Transaction()
-                                t.disablesAnimations = true
-                                withTransaction(t) {
+                        let swipeOutCurve = Animation.timingCurve(0.32, 0.72, 0, 1, duration: 0.24)
+                        let snapBackCurve = Animation.interpolatingSpring(stiffness: 400, damping: 28)
+
+                        if dir == 1 {
+                            let normalized = dragOffset / screenWidth
+
+                            if normalized < -swipeThreshold && canGoNextStory {
+                                withAnimation(swipeOutCurve) {
+                                    dragOffset = -screenWidth
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                    var t = Transaction()
+                                    t.disablesAnimations = true
+                                    withTransaction(t) {
+                                        dragOffset = 0
+                                        progress = 0
+                                        currentStoryIndex += 1
+                                        currentContentIndex = 0
+                                    }
+                                    startProgress()
+                                }
+                            } else if normalized > swipeThreshold && canGoPrevStory {
+                                withAnimation(swipeOutCurve) {
+                                    dragOffset = screenWidth
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                    var t = Transaction()
+                                    t.disablesAnimations = true
+                                    withTransaction(t) {
+                                        dragOffset = 0
+                                        progress = 0
+                                        currentStoryIndex -= 1
+                                        currentContentIndex = 0
+                                    }
+                                    startProgress()
+                                }
+                            } else {
+                                withAnimation(snapBackCurve) {
                                     dragOffset = 0
-                                    progress = 0
-                                    currentStoryIndex += 1
-                                    currentContentIndex = 0
                                 }
                                 startProgress()
                             }
-                        } else if normalized > swipeThreshold && canGoPrevStory {
-                            withAnimation(.easeOut(duration: 0.18)) {
-                                dragOffset = screenWidth
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                var t = Transaction()
-                                t.disablesAnimations = true
-                                withTransaction(t) {
-                                    dragOffset = 0
-                                    progress = 0
-                                    currentStoryIndex -= 1
-                                    currentContentIndex = 0
+                        } else if dir == 2 {
+                            let normalizedY = verticalDragOffset / screenH
+
+                            if normalizedY > 0.35 {
+                                withAnimation(.timingCurve(0.32, 0.72, 0, 1, duration: 0.28)) {
+                                    verticalDragOffset = screenH
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                                    onDismiss()
+                                }
+                            } else {
+                                withAnimation(snapBackCurve) {
+                                    verticalDragOffset = 0
                                 }
                                 startProgress()
                             }
-                        } else {
-                            // Snap back smoothly
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                dragOffset = 0
-                            }
-                            startProgress()
                         }
                     }
             )

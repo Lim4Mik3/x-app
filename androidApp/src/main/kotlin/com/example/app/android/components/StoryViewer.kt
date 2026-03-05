@@ -1,13 +1,14 @@
 package com.example.app.android.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
-import androidx.compose.foundation.gestures.horizontalDrag
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,6 +79,7 @@ fun StoryViewer(
     var currentContentIndex by remember { mutableIntStateOf(0) }
     val progress = remember { Animatable(0f) }
     val dragOffset = remember { Animatable(0f) }
+    val verticalDragOffset = remember { Animatable(0f) }
     var screenWidth by remember { mutableFloatStateOf(1f) }
     val scope = rememberCoroutineScope()
     var isDragging by remember { mutableStateOf(false) }
@@ -114,82 +116,155 @@ fun StoryViewer(
             .onSizeChanged { screenWidth = it.width.toFloat() }
             .windowInsetsPadding(WindowInsets.statusBars)
             .pointerInput(currentStoryIndex) {
+                val slop = viewConfiguration.touchSlop
                 awaitEachGesture {
                     val down = awaitFirstDown()
-                    var dragX = 0f
+                    var accX = 0f
+                    var accY = 0f
+                    var direction = 0 // 0=undecided, 1=horizontal, 2=vertical
 
-                    val drag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
-                        dragX = over
-                        change.consume()
-                    }
-
-                    if (drag == null) {
-                        // Tap
-                        val tapX = down.position.x
-                        if (tapX < size.width / 2) {
-                            if (currentContentIndex > 0) {
-                                currentContentIndex--
-                            } else if (canGoPrevStory) {
-                                currentStoryIndex--
-                                currentContentIndex = 0
-                            }
-                        } else {
-                            if (currentContentIndex < contents.lastIndex) {
-                                currentContentIndex++
-                            } else if (canGoNextStory) {
-                                currentStoryIndex++
-                                currentContentIndex = 0
+                    // Detect gesture direction
+                    while (direction == 0) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id }
+                            ?: return@awaitEachGesture
+                        if (!change.pressed) {
+                            // Released before slop → tap
+                            val tapX = down.position.x
+                            if (tapX < size.width / 2) {
+                                if (currentContentIndex > 0) {
+                                    currentContentIndex--
+                                } else if (canGoPrevStory) {
+                                    currentStoryIndex--
+                                    currentContentIndex = 0
+                                }
                             } else {
-                                onDismiss()
+                                if (currentContentIndex < contents.lastIndex) {
+                                    currentContentIndex++
+                                } else if (canGoNextStory) {
+                                    currentStoryIndex++
+                                    currentContentIndex = 0
+                                } else {
+                                    onDismiss()
+                                }
                             }
+                            return@awaitEachGesture
                         }
-                        return@awaitEachGesture
+                        val delta = change.positionChange()
+                        accX += delta.x
+                        accY += delta.y
+                        if (kotlin.math.abs(accX) > slop) {
+                            direction = 1
+                            change.consume()
+                        } else if (kotlin.math.abs(accY) > slop) {
+                            direction = 2
+                            change.consume()
+                        }
                     }
 
-                    // Drag started
-                    isDragging = true
-                    scope.launch { dragOffset.snapTo(dragX) }
+                    when (direction) {
+                        1 -> {
+                            // HORIZONTAL: swipe between stories
+                            isDragging = true
+                            scope.launch { dragOffset.snapTo(accX) }
 
-                    horizontalDrag(drag.id) { change ->
-                        val delta = change.positionChange().x
-                        dragX += delta
-                        change.consume()
-                        // Block movement at boundaries (no rubber band)
-                        val clamped = when {
-                            dragX > 0 && !canGoPrevStory -> 0f
-                            dragX < 0 && !canGoNextStory -> 0f
-                            else -> dragX
-                        }
-                        scope.launch { dragOffset.snapTo(clamped) }
-                    }
+                            drag(down.id) { change ->
+                                accX += change.positionChange().x
+                                change.consume()
+                                val clamped = when {
+                                    accX > 0 && !canGoPrevStory -> 0f
+                                    accX < 0 && !canGoNextStory -> 0f
+                                    else -> accX
+                                }
+                                scope.launch { dragOffset.snapTo(clamped) }
+                            }
 
-                    // Drag ended
-                    val normalized = dragOffset.value / screenWidth
-                    scope.launch {
-                        when {
-                            normalized < -swipeThreshold && canGoNextStory -> {
-                                // Animate out, then switch
-                                dragOffset.animateTo(-screenWidth, tween(180))
-                                // Reset offset BEFORE changing index to avoid flicker
-                                dragOffset.snapTo(0f)
-                                progress.snapTo(0f)
-                                currentStoryIndex++
-                                currentContentIndex = 0
+                            val normalized = dragOffset.value / screenWidth
+                            val swipeOutEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
+                            scope.launch {
+                                when {
+                                    normalized < -swipeThreshold && canGoNextStory -> {
+                                        dragOffset.animateTo(
+                                            -screenWidth,
+                                            tween(220, easing = swipeOutEasing)
+                                        )
+                                        dragOffset.snapTo(0f)
+                                        progress.snapTo(0f)
+                                        currentStoryIndex++
+                                        currentContentIndex = 0
+                                    }
+                                    normalized > swipeThreshold && canGoPrevStory -> {
+                                        dragOffset.animateTo(
+                                            screenWidth,
+                                            tween(220, easing = swipeOutEasing)
+                                        )
+                                        dragOffset.snapTo(0f)
+                                        progress.snapTo(0f)
+                                        currentStoryIndex--
+                                        currentContentIndex = 0
+                                    }
+                                    else -> dragOffset.animateTo(
+                                        0f,
+                                        spring(dampingRatio = 0.75f, stiffness = 500f)
+                                    )
+                                }
+                                isDragging = false
                             }
-                            normalized > swipeThreshold && canGoPrevStory -> {
-                                dragOffset.animateTo(screenWidth, tween(180))
-                                dragOffset.snapTo(0f)
-                                progress.snapTo(0f)
-                                currentStoryIndex--
-                                currentContentIndex = 0
-                            }
-                            else -> dragOffset.animateTo(0f, tween(200))
                         }
-                        isDragging = false
+                        2 -> {
+                            // VERTICAL: drag down to dismiss with resistance
+                            if (accY <= 0) return@awaitEachGesture
+                            isDragging = true
+                            val screenH = size.height.toFloat()
+                            scope.launch {
+                                verticalDragOffset.snapTo(applyResistance(accY, screenH))
+                            }
+
+                            drag(down.id) { change ->
+                                accY += change.positionChange().y
+                                change.consume()
+                                val raw = accY.coerceAtLeast(0f)
+                                scope.launch {
+                                    verticalDragOffset.snapTo(applyResistance(raw, screenH))
+                                }
+                            }
+
+                            val normalizedY = verticalDragOffset.value / screenH
+                            val dismissEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
+                            val snapBackEasing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
+                            scope.launch {
+                                if (normalizedY > 0.35f) {
+                                    verticalDragOffset.animateTo(
+                                        screenH,
+                                        tween(280, easing = dismissEasing)
+                                    )
+                                    onDismiss()
+                                } else {
+                                    verticalDragOffset.animateTo(
+                                        0f,
+                                        spring(dampingRatio = 0.7f, stiffness = 400f)
+                                    )
+                                }
+                                isDragging = false
+                            }
+                        }
                     }
                 }
             }
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val vOffset = verticalDragOffset.value
+                    if (vOffset > 0f) {
+                        val screenH = this.size.height
+                        val norm = if (screenH > 0) (vOffset / screenH).coerceIn(0f, 1f) else 0f
+                        translationY = vOffset
+                        alpha = 1f - norm * 0.5f
+                    }
+                }
+        ) {
         // Previous story (behind, when swiping right)
         if (canGoPrevStory && dragOffset.value > 0) {
             val bp = kotlin.math.abs(swipeProgress)
@@ -240,7 +315,15 @@ fun StoryViewer(
                     }
                 }
         )
+        } // vertical offset wrapper
     }
+}
+
+// Light resistance: slows down gently as you drag further
+private fun applyResistance(raw: Float, max: Float): Float {
+    if (max <= 0f || raw <= 0f) return 0f
+    val ratio = (raw / max).coerceIn(0f, 2f)
+    return max * (1f - (1f / (ratio * 0.85f + 1f))) * 1.3f
 }
 
 @Composable

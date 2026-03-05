@@ -2,7 +2,6 @@ package com.example.app.android.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,12 +38,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.android.R
 import com.example.app.android.network.models.FeedPost
+import com.example.app.android.network.models.toHashtag
 import com.example.app.android.theme.AppTheme
 
 @Composable
 fun FeedPostItem(
     post: FeedPost,
-    distanceText: String?,
     onSignalClick: () -> Unit = {},
     onCommentClick: () -> Unit = {},
     onShareClick: () -> Unit = {},
@@ -64,24 +63,36 @@ fun FeedPostItem(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            // Header row: type badge + time + distance + 3-dot menu
+            // Header: Type · Distance · Time  ···
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Type badge
-                TypeBadge(type = post.typeLabel)
+                val tColor = parseColor(post.typeColor)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(tColor.copy(alpha = 0.12f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = post.type,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = tColor,
+                        maxLines = 1
+                    )
+                }
 
-                if (post.categoryLabel != null) {
+                if (post.distance != null) {
                     Spacer(Modifier.width(6.dp))
                     Text("\u00B7", fontSize = 12.sp, color = colors.textSecondary)
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = post.categoryLabel!!,
+                        text = post.distance,
                         fontSize = 12.sp,
                         color = colors.textSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        maxLines = 1
                     )
                 }
 
@@ -128,54 +139,100 @@ fun FeedPostItem(
                 }
             }
 
-            // Distance row
-            if (distanceText != null) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = distanceText,
-                    fontSize = 11.sp,
-                    color = colors.textSecondary.copy(alpha = 0.7f)
-                )
-            }
-
             Spacer(Modifier.height(10.dp))
 
             // Post content
             Text(
-                text = post.originalText,
+                text = post.content,
                 fontSize = 15.sp,
                 color = colors.textPrimary,
                 lineHeight = 21.sp,
                 letterSpacing = 0.1.sp
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // Interaction buttons
+            // Categories as hashtags
+            if (post.categories.isNotEmpty()) {
+                Text(
+                    text = post.categories.joinToString("  ") { toHashtag(it) },
+                    fontSize = 11.sp,
+                    color = colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+
+            // Divider
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(0.5.dp)
+                    .background(colors.divider)
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            // Interaction buttons (equal width)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                InteractionButton(
-                    icon = ImageVector.vectorResource(R.drawable.ic_signal),
-                    label = "Sinal",
-                    tint = colors.textSecondary,
-                    onClick = onSignalClick
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable(onClick = onSignalClick)
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    InteractionLabel(
+                        icon = ImageVector.vectorResource(R.drawable.ic_signal),
+                        label = if (post.signalsCount > 0) "${post.signalsCount}" else "Sinal",
+                        tint = colors.textSecondary
+                    )
+                }
+                Box(
+                    Modifier
+                        .width(0.5.dp)
+                        .height(14.dp)
+                        .background(colors.divider)
                 )
-                Spacer(Modifier.width(20.dp))
-                InteractionButton(
-                    icon = Icons.Outlined.ChatBubbleOutline,
-                    label = "Comentar",
-                    tint = colors.textSecondary,
-                    onClick = onCommentClick
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable(onClick = onCommentClick)
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    InteractionLabel(
+                        icon = Icons.Outlined.ChatBubbleOutline,
+                        label = if (post.commentsCount > 0) "${post.commentsCount}" else "Comentar",
+                        tint = colors.textSecondary
+                    )
+                }
+                Box(
+                    Modifier
+                        .width(0.5.dp)
+                        .height(14.dp)
+                        .background(colors.divider)
                 )
-                Spacer(Modifier.width(20.dp))
-                InteractionButton(
-                    icon = Icons.Outlined.Share,
-                    label = "Compartilhar",
-                    tint = colors.textSecondary,
-                    onClick = onShareClick
-                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable(onClick = onShareClick)
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    InteractionLabel(
+                        icon = Icons.Outlined.Share,
+                        label = "Compartilhar",
+                        tint = colors.textSecondary
+                    )
+                }
             }
         }
 
@@ -189,60 +246,24 @@ fun FeedPostItem(
     }
 }
 
-@Composable
-private fun TypeBadge(type: String) {
-    val badgeColor = when (type.lowercase()) {
-        "alerta" -> Color(0xFFFF9500).copy(alpha = 0.12f)
-        "relato" -> Color(0xFF007AFF).copy(alpha = 0.12f)
-        "den\u00fancia", "denuncia" -> Color(0xFFFF3B30).copy(alpha = 0.12f)
-        "informa\u00e7\u00e3o", "informacao" -> Color(0xFF007AFF).copy(alpha = 0.12f)
-        "com\u00e9rcio", "comercio" -> Color(0xFFAF52DE).copy(alpha = 0.12f)
-        "pedido" -> Color(0xFF34C759).copy(alpha = 0.12f)
-        "reclama\u00e7\u00e3o", "reclamacao" -> Color(0xFFFF9500).copy(alpha = 0.12f)
-        else -> Color(0xFF8E8E93).copy(alpha = 0.12f)
-    }
+private val defaultTypeColor = Color(0xFF8E8E93)
 
-    val textColor = when (type.lowercase()) {
-        "alerta" -> Color(0xFFFF9500)
-        "relato" -> Color(0xFF007AFF)
-        "den\u00fancia", "denuncia" -> Color(0xFFFF3B30)
-        "informa\u00e7\u00e3o", "informacao" -> Color(0xFF007AFF)
-        "com\u00e9rcio", "comercio" -> Color(0xFFAF52DE)
-        "pedido" -> Color(0xFF34C759)
-        "reclama\u00e7\u00e3o", "reclamacao" -> Color(0xFFFF9500)
-        else -> Color(0xFF8E8E93)
-    }
-
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(badgeColor)
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    ) {
-        Text(
-            text = type,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = textColor,
-            maxLines = 1
-        )
+private fun parseColor(hex: String?): Color {
+    if (hex.isNullOrBlank()) return defaultTypeColor
+    return try {
+        Color(android.graphics.Color.parseColor(hex))
+    } catch (_: Exception) {
+        defaultTypeColor
     }
 }
 
 @Composable
-private fun InteractionButton(
+private fun InteractionLabel(
     icon: ImageVector,
     label: String,
-    tint: Color,
-    onClick: () -> Unit
+    tint: Color
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp, horizontal = 2.dp)
-    ) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = icon,
             contentDescription = label,

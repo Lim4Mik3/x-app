@@ -62,7 +62,11 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun MainScreen(onLogout: () -> Unit = {}) {
+fun MainScreen(
+    isLoggedIn: Boolean = false,
+    onLoginSuccess: () -> Unit = {},
+    onLogout: () -> Unit = {}
+) {
     val colors = AppTheme.colors
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -82,13 +86,22 @@ fun MainScreen(onLogout: () -> Unit = {}) {
     // Feed state
     var feedPosts by remember { mutableStateOf<List<FeedPost>>(emptyList()) }
     var isFeedLoading by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
     var feedCursor by remember { mutableStateOf<String?>(null) }
     var hasMore by remember { mutableStateOf(true) }
+
+    // Login overlay
+    var showLoginOverlay by remember { mutableStateOf(false) }
+
+    fun requireAuth(action: () -> Unit) {
+        if (isLoggedIn) action() else showLoginOverlay = true
+    }
 
     // Interaction sheets
     var showCommentForPost by remember { mutableStateOf<FeedPost?>(null) }
     var showSignalForPost by remember { mutableStateOf<FeedPost?>(null) }
     var showReportForPost by remember { mutableStateOf<FeedPost?>(null) }
+    var showStoryViewer by remember { mutableStateOf<com.example.app.android.components.StoryItem?>(null) }
 
     // Location permissions
     val locationPermissions = rememberMultiplePermissionsState(
@@ -132,6 +145,7 @@ fun MainScreen(onLogout: () -> Unit = {}) {
         scope.launch {
             isFeedLoading = true
             if (refresh) {
+                isRefreshing = true
                 feedCursor = null
                 hasMore = true
             }
@@ -146,6 +160,7 @@ fun MainScreen(onLogout: () -> Unit = {}) {
                 onFailure = { /* silently handle */ }
             )
             isFeedLoading = false
+            isRefreshing = false
         }
     }
 
@@ -189,16 +204,18 @@ fun MainScreen(onLogout: () -> Unit = {}) {
                 posts = feedPosts,
                 listState = feedListState,
                 isLoading = isFeedLoading,
-                userLocation = userLocation,
-                onSignalClick = { showSignalForPost = it },
-                onCommentClick = { showCommentForPost = it },
+                isRefreshing = isRefreshing,
+                onSignalClick = { post -> requireAuth { showSignalForPost = post } },
+                onCommentClick = { post -> requireAuth { showCommentForPost = post } },
                 onShareClick = { /* TODO: share intent */ },
-                onReportClick = { showReportForPost = it },
+                onReportClick = { post -> requireAuth { showReportForPost = post } },
+                onStoryClick = { story -> showStoryViewer = story },
                 onLoadMore = {
                     if (hasMore && !isFeedLoading && feedCursor != null) {
                         loadFeed()
                     }
                 },
+                onRefresh = { loadFeed(refresh = true) },
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(scrollAwareState.nestedScrollConnection),
@@ -207,29 +224,47 @@ fun MainScreen(onLogout: () -> Unit = {}) {
                     bottom = with(density) { scrollAwareState.bottomBarHeightPx.toDp() }
                 )
             )
-            Tab.MyPosts -> MyPostsScreen(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = with(density) { scrollAwareState.bottomBarHeightPx.toDp() })
-            )
-            Tab.Profile -> ProfileScreen(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = with(density) { scrollAwareState.bottomBarHeightPx.toDp() }),
-                onLogout = {
-                    scope.launch {
-                        ApiClient.logout()
-                        TokenManager.clear()
-                        onLogout()
-                    }
+            Tab.MyPosts -> {
+                if (isLoggedIn) {
+                    MyPostsScreen(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = with(density) { scrollAwareState.bottomBarHeightPx.toDp() })
+                    )
+                } else {
+                    LoginScreen(
+                        onLoginSuccess = onLoginSuccess,
+                        onDismiss = { selectedTab = Tab.Home }
+                    )
                 }
-            )
+            }
+            Tab.Profile -> {
+                if (isLoggedIn) {
+                    ProfileScreen(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = with(density) { scrollAwareState.bottomBarHeightPx.toDp() }),
+                        onLogout = {
+                            scope.launch {
+                                ApiClient.logout()
+                                TokenManager.clear()
+                                onLogout()
+                            }
+                        }
+                    )
+                } else {
+                    LoginScreen(
+                        onLoginSuccess = onLoginSuccess,
+                        onDismiss = { selectedTab = Tab.Home }
+                    )
+                }
+            }
         }
 
         // FAB
         if (selectedTab == Tab.Home) {
             CreatePostFab(
-                onClick = { navController.navigateOnce(OverlayRoute.CreatePost.route) },
+                onClick = { requireAuth { navController.navigateOnce(OverlayRoute.CreatePost.route) } },
                 scrollAwareState = scrollAwareState,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -293,5 +328,39 @@ fun MainScreen(onLogout: () -> Unit = {}) {
                 onDismiss = { showReportForPost = null }
             )
         }
+
+        // Story viewer
+        if (showStoryViewer != null) {
+            Box(modifier = Modifier.fillMaxSize().zIndex(15f)) {
+                val initialIndex = com.example.app.android.components.mockStories
+                    .indexOfFirst { it.id == showStoryViewer!!.id }
+                    .coerceAtLeast(0)
+                com.example.app.android.components.StoryViewer(
+                    stories = com.example.app.android.components.mockStories,
+                    initialStoryIndex = initialIndex,
+                    contentsForStory = { story -> mockStoryContents(story.label) },
+                    onDismiss = { showStoryViewer = null }
+                )
+            }
+        }
+
+        // Login overlay (triggered by interactions when not logged in)
+        if (showLoginOverlay) {
+            Box(modifier = Modifier.fillMaxSize().zIndex(20f)) {
+                LoginScreen(
+                    onLoginSuccess = {
+                        onLoginSuccess()
+                        showLoginOverlay = false
+                    },
+                    onDismiss = { showLoginOverlay = false }
+                )
+            }
+        }
     }
 }
+
+private fun mockStoryContents(label: String) = listOf(
+    com.example.app.android.components.StoryContent("1", "Buraco grande na rua principal, cuidado ao passar!", "2h"),
+    com.example.app.android.components.StoryContent("2", "Semáforo quebrado no cruzamento da Av. Brasil", "4h"),
+    com.example.app.android.components.StoryContent("3", "Festa de rua acontecendo neste fim de semana", "6h"),
+)

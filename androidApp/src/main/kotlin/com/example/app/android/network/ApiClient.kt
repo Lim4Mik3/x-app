@@ -13,7 +13,6 @@ import okhttp3.Response
 import okhttp3.Route
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
@@ -197,6 +196,9 @@ object ApiClient {
             val response = client.newCall(request).execute()
             val responseBody = response.body?.string()
 
+            android.util.Log.d("ApiClient", "[$method] $url → ${response.code}")
+            android.util.Log.d("ApiClient", "Response: $responseBody")
+
             if (!response.isSuccessful) {
                 val errorMsg = responseBody?.let {
                     try { JSONObject(it).optString("error", it) } catch (_: Exception) { it }
@@ -235,8 +237,6 @@ private class AuthInterceptor : Interceptor {
         TokenManager.accessToken?.let {
             builder.header("Authorization", "Bearer $it")
         }
-
-        builder.header("Accept-Language", Locale.getDefault().toLanguageTag())
 
         return chain.proceed(builder.build())
     }

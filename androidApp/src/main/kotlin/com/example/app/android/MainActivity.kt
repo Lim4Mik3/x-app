@@ -12,7 +12,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.app.android.network.TokenManager
-import com.example.app.android.screens.LoginScreen
 import com.example.app.android.screens.MainScreen
 import com.example.app.android.theme.AppTheme
 
@@ -48,13 +47,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             AppTheme(darkTheme = isDark) {
-                if (isLoggedIn) {
-                    MainScreen(onLogout = { isLoggedIn = false })
-                } else {
-                    LoginScreen(
-                        onLoginSuccess = { isLoggedIn = true }
-                    )
-                }
+                MainScreen(
+                    isLoggedIn = isLoggedIn,
+                    onLoginSuccess = { isLoggedIn = true },
+                    onLogout = { isLoggedIn = false }
+                )
             }
         }
     }

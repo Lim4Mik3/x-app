@@ -81,61 +81,30 @@ struct FeedResponse {
 
 struct ApiFeedPost: Identifiable {
     let id: String
-    let originalText: String
-    let normalizedText: String
+    let content: String
     let type: String
-    let typeConfidence: Double
+    let typeColor: String?
     let categories: [String]
-    let createdAt: String
-    let latitude: Double?
-    let longitude: Double?
+    let postedAt: String
+    let signalsCount: Int
+    let commentsCount: Int
+    let distance: String?
 
-    var timeAgo: String { formatTimeAgo(createdAt) }
-
-    var typeLabel: String {
-        switch type.uppercased() {
-        case "NARRAR": return "Relato"
-        case "ALERTAR": return "Alerta"
-        case "VENDER": return "Comércio"
-        case "INFORMAR": return "Informação"
-        case "PEDIR": return "Pedido"
-        case "RECLAMAR": return "Reclamação"
-        case "DENUNCIAR": return "Denúncia"
-        default: return type
-        }
-    }
-
-    var categoryLabel: String? {
-        guard let cat = categories.first else { return nil }
-        switch cat.uppercased() {
-        case "SEGURANCA_CRIME": return "Crime"
-        case "INFRAESTRUTURA": return "Infraestrutura"
-        case "TRANSITO": return "Trânsito"
-        case "CLIMA": return "Clima"
-        case "SAUDE": return "Saúde"
-        case "COMUNIDADE": return "Comunidade"
-        case "COMERCIO": return "Comércio"
-        case "EVENTO": return "Evento"
-        case "ANIMAL": return "Animais"
-        case "ESPORTE": return "Esporte"
-        case "TRANSPORTE": return "Transporte"
-        default: return cat.replacingOccurrences(of: "_", with: " ").capitalized
-        }
-    }
+    var timeAgo: String { formatTimeAgo(postedAt) }
 
     static func from(_ dict: [String: Any]) -> ApiFeedPost? {
         guard let id = dict["id"] as? String else { return nil }
         let cats = dict["categories"] as? [String] ?? []
         return ApiFeedPost(
             id: id,
-            originalText: dict["original_text"] as? String ?? "",
-            normalizedText: dict["normalized_text"] as? String ?? "",
+            content: dict["content"] as? String ?? "",
             type: dict["type"] as? String ?? "",
-            typeConfidence: dict["type_confidence"] as? Double ?? 0,
+            typeColor: dict["type_color"] as? String,
             categories: cats,
-            createdAt: dict["created_at"] as? String ?? "",
-            latitude: dict["latitude"] as? Double,
-            longitude: dict["longitude"] as? Double
+            postedAt: dict["posted_at"] as? String ?? "",
+            signalsCount: dict["signals_count"] as? Int ?? 0,
+            commentsCount: dict["comments_count"] as? Int ?? 0,
+            distance: dict["distance"] as? String
         )
     }
 }
@@ -228,6 +197,13 @@ private let isoFormatter: DateFormatter = {
     f.locale = Locale(identifier: "en_US_POSIX")
     return f
 }()
+
+func toHashtag(_ text: String) -> String {
+    let camel = text.split(separator: " ").map { word in
+        word.prefix(1).uppercased() + word.dropFirst()
+    }.joined()
+    return "#\(camel)"
+}
 
 func formatTimeAgo(_ isoDate: String) -> String {
     guard !isoDate.isEmpty else { return "" }

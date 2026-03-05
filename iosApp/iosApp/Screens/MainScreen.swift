@@ -2,8 +2,11 @@ import SwiftUI
 import CoreLocation
 
 struct MainScreen: View {
+    var isLoggedIn: Bool = false
+    var onLoginSuccess: () -> Void = {}
     var onLogout: () -> Void = {}
     @State private var selectedTab: AppTab = .home
+    @State private var showLoginOverlay = false
     @StateObject private var scrollState = ScrollAwareState()
     @StateObject private var navigator = OverlayNavigator()
     @StateObject private var locationService = LocationService.shared
@@ -21,6 +24,11 @@ struct MainScreen: View {
     @State private var showCommentForPost: ApiFeedPost?
     @State private var showSignalForPost: ApiFeedPost?
     @State private var showReportForPost: ApiFeedPost?
+    @State private var showStoryViewer: StoryItem?
+
+    private func requireAuth(_ action: @escaping () -> Void) {
+        if isLoggedIn { action() } else { showLoginOverlay = true }
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -31,33 +39,50 @@ struct MainScreen: View {
                     case .home:
                         Feed(
                             posts: feedPosts,
-                            userLocation: locationService.location,
                             isLoading: isFeedLoading,
                             onScrollOffsetChanged: { scrollState.onScrollOffsetChanged($0) },
                             topInset: scrollState.headerHeight,
                             bottomInset: scrollState.bottomBarHeight,
-                            onSignalClick: { showSignalForPost = $0 },
-                            onCommentClick: { showCommentForPost = $0 },
+                            onSignalClick: { post in requireAuth { showSignalForPost = post } },
+                            onCommentClick: { post in requireAuth { showCommentForPost = post } },
                             onShareClick: { _ in },
-                            onReportClick: { showReportForPost = $0 },
+                            onReportClick: { post in requireAuth { showReportForPost = post } },
+                            onStoryClick: { story in showStoryViewer = story },
                             onLoadMore: {
                                 if hasMore && !isFeedLoading && feedCursor != nil {
                                     loadFeed()
                                 }
+                            },
+                            onRefresh: {
+                                await refreshFeed()
                             }
                         )
                     case .myPosts:
-                        MyPostsScreen()
-                            .padding(.bottom, scrollState.bottomBarHeight)
+                        if isLoggedIn {
+                            MyPostsScreen()
+                                .padding(.bottom, scrollState.bottomBarHeight)
+                        } else {
+                            LoginScreen(
+                                onLoginSuccess: onLoginSuccess,
+                                onDismiss: { selectedTab = .home }
+                            )
+                        }
                     case .profile:
-                        ProfileScreen(onLogout: {
-                            Task {
-                                try? await ApiClient.shared.logout()
-                                TokenManager.shared.clear()
-                                onLogout()
-                            }
-                        })
-                            .padding(.bottom, scrollState.bottomBarHeight)
+                        if isLoggedIn {
+                            ProfileScreen(onLogout: {
+                                Task {
+                                    try? await ApiClient.shared.logout()
+                                    TokenManager.shared.clear()
+                                    onLogout()
+                                }
+                            })
+                                .padding(.bottom, scrollState.bottomBarHeight)
+                        } else {
+                            LoginScreen(
+                                onLoginSuccess: onLoginSuccess,
+                                onDismiss: { selectedTab = .home }
+                            )
+                        }
                     }
                 }
 
@@ -97,8 +122,10 @@ struct MainScreen: View {
                 // FAB
                 if selectedTab == .home {
                     CreatePostFab {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            navigator.navigate(to: .createPost)
+                        requireAuth {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                navigator.navigate(to: .createPost)
+                            }
                         }
                     }
                     .padding(.bottom, scrollState.bottomBarHeight + 16)
@@ -122,6 +149,32 @@ struct MainScreen: View {
                         removal: .move(edge: .trailing)
                     ))
                     .zIndex(10)
+                }
+
+                // Login overlay (triggered by interactions when not logged in)
+                if showLoginOverlay {
+                    LoginScreen(
+                        onLoginSuccess: {
+                            onLoginSuccess()
+                            showLoginOverlay = false
+                        },
+                        onDismiss: { showLoginOverlay = false }
+                    )
+                    .zIndex(20)
+                    .transition(.opacity)
+                }
+
+                // Story viewer
+                if let story = showStoryViewer {
+                    let initialIndex = mockStories.firstIndex(where: { $0.id == story.id }) ?? 0
+                    StoryViewer(
+                        stories: mockStories,
+                        initialStoryIndex: initialIndex,
+                        contentsForStory: { _ in mockStoryContents() },
+                        onDismiss: { showStoryViewer = nil }
+                    )
+                    .zIndex(15)
+                    .transition(.opacity)
                 }
 
                 // Sheets
@@ -156,6 +209,23 @@ struct MainScreen: View {
     }
 
     // MARK: - Feed Loading
+
+    private func refreshFeed() async {
+        guard let loc = locationService.location else { return }
+        do {
+            let response = try await ApiClient.shared.getFeed(
+                lat: loc.coordinate.latitude,
+                lng: loc.coordinate.longitude,
+                limit: 20,
+                cursor: nil
+            )
+            await MainActor.run {
+                feedPosts = response.posts
+                feedCursor = response.nextCursor
+                hasMore = response.hasMore
+            }
+        } catch {}
+    }
 
     private func loadFeed(refresh: Bool = false) {
         guard let loc = locationService.location else { return }
@@ -203,6 +273,14 @@ struct MainScreen: View {
             }
         }
     }
+}
+
+private func mockStoryContents() -> [StoryContent] {
+    [
+        StoryContent(id: "1", text: "Buraco grande na rua principal, cuidado ao passar!", timeAgo: "2h"),
+        StoryContent(id: "2", text: "Semáforo quebrado no cruzamento da Av. Brasil", timeAgo: "4h"),
+        StoryContent(id: "3", text: "Festa de rua acontecendo neste fim de semana", timeAgo: "6h"),
+    ]
 }
 
 // Make ApiFeedPost work with .sheet(item:)

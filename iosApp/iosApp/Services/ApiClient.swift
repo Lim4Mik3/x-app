@@ -19,7 +19,11 @@ enum ApiError: Error, LocalizedError {
 
 final class ApiClient {
     static let shared = ApiClient()
-    private let session = URLSession.shared
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.httpAdditionalHeaders = ["Accept-Language": ""]
+        return URLSession(configuration: config)
+    }()
     private let decoder = JSONDecoder()
     private init() {}
 
@@ -143,8 +147,6 @@ final class ApiClient {
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue(Locale.preferredLanguages.first ?? "pt-BR", forHTTPHeaderField: "Accept-Language")
-
         if auth, let token = TokenManager.shared.accessToken {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
@@ -168,6 +170,9 @@ final class ApiClient {
 
         #if DEBUG
         print("   ← \(http.statusCode) (\(data.count) bytes)")
+        if let responseStr = String(data: data, encoding: .utf8) {
+            print("   Response: \(responseStr)")
+        }
         #endif
 
         // Handle 401 with token refresh

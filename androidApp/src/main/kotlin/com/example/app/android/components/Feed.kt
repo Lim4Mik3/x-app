@@ -1,120 +1,146 @@
 package com.example.app.android.components
 
-import android.location.Location
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.android.network.models.FeedPost
-import com.example.app.android.services.LocationService
 import com.example.app.android.theme.AppTheme
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Feed(
     posts: List<FeedPost>,
     listState: LazyListState,
     isLoading: Boolean,
-    userLocation: Location?,
+    isRefreshing: Boolean = false,
     onSignalClick: (FeedPost) -> Unit,
     onCommentClick: (FeedPost) -> Unit,
     onShareClick: (FeedPost) -> Unit,
     onReportClick: (FeedPost) -> Unit,
+    onStoryClick: (StoryItem) -> Unit = {},
     onLoadMore: () -> Unit,
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues()
 ) {
     val colors = AppTheme.colors
 
-    if (isLoading && posts.isEmpty()) {
-        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(
-                color = colors.accent,
-                strokeWidth = 2.dp,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        return
-    }
-
-    if (!isLoading && posts.isEmpty()) {
-        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                "Nenhuma publica\u00e7\u00e3o por perto",
-                fontSize = 14.sp,
-                color = colors.textSecondary
-            )
-        }
-        return
-    }
-
-    LazyColumn(
-        state = listState,
-        modifier = modifier,
-        contentPadding = contentPadding
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier
     ) {
-        items(posts, key = { it.id }) { post ->
-            val distanceText = remember(post, userLocation) {
-                if (userLocation != null && post.latitude != null && post.longitude != null) {
-                    val dist = LocationService.distanceBetween(
-                        userLocation.latitude, userLocation.longitude,
-                        post.latitude, post.longitude
-                    )
-                    formatDistance(dist)
-                } else null
+        if (isLoading && posts.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    color = colors.accent,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(24.dp)
+                )
             }
-
-            FeedPostItem(
-                post = post,
-                distanceText = distanceText,
-                onSignalClick = { onSignalClick(post) },
-                onCommentClick = { onCommentClick(post) },
-                onShareClick = { onShareClick(post) },
-                onReportClick = { onReportClick(post) }
-            )
-        }
-
-        // Load more trigger
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
+        } else if (!isLoading && posts.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    "Nenhuma publica\u00e7\u00e3o por perto",
+                    fontSize = 14.sp,
+                    color = colors.textSecondary
+                )
+            }
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = contentPadding
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        color = colors.accent,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(20.dp)
+                // Stories section
+                item(key = "stories") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        colors.accent.copy(alpha = 0.06f),
+                                        colors.surface
+                                    )
+                                )
+                            )
+                    ) {
+                        StoriesRow(
+                            stories = mockStories,
+                            onStoryClick = onStoryClick,
+                            modifier = Modifier.padding(vertical = 12.dp)
+                        )
+                    }
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .background(colors.divider.copy(alpha = 0.4f))
                     )
                 }
+
+                items(posts, key = { it.id }) { post ->
+                    FeedPostItem(
+                        post = post,
+                        onSignalClick = { onSignalClick(post) },
+                        onCommentClick = { onCommentClick(post) },
+                        onShareClick = { onShareClick(post) },
+                        onReportClick = { onReportClick(post) }
+                    )
+                }
+
+                // Load more trigger
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                color = colors.accent,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    // Trigger load more when reaching bottom
+                    onLoadMore()
+                }
             }
-            // Trigger load more when reaching bottom
-            onLoadMore()
         }
     }
 }
 
-private fun formatDistance(meters: Float): String {
-    return when {
-        meters < 100f -> "A menos de 100m"
-        meters < 1000f -> "A ${meters.toInt()}m"
-        else -> "A %.1fkm".format(meters / 1000f)
-    }
-}
+val mockStories = listOf(
+    StoryItem("1", "Centro", Color(0xFFFF9500)),
+    StoryItem("2", "Pinheiros", Color(0xFF007AFF)),
+    StoryItem("3", "Vila Madalena", Color(0xFFFF3B30)),
+    StoryItem("4", "Moema", Color(0xFF34C759)),
+    StoryItem("5", "Itaim Bibi", Color(0xFFAF52DE)),
+    StoryItem("6", "Consolação", Color(0xFFFF2D55)),
+    StoryItem("7", "Liberdade", Color(0xFF5AC8FA)),
+    StoryItem("8", "Bela Vista", Color(0xFF4CD964)),
+)

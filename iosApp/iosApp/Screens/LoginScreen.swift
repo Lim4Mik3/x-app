@@ -3,6 +3,7 @@ import AuthenticationServices
 
 struct LoginScreen: View {
     var onLoginSuccess: () -> Void
+    var onDismiss: (() -> Void)? = nil
 
     @Environment(\.appColors) private var colors
     @State private var isLoading = false
@@ -11,6 +12,23 @@ struct LoginScreen: View {
     var body: some View {
         ZStack {
             colors.background.ignoresSafeArea()
+
+            // Close button when shown as overlay
+            if let onDismiss = onDismiss {
+                VStack {
+                    HStack {
+                        Button(action: onDismiss) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(colors.textPrimary)
+                                .frame(width: 44, height: 44)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 8)
+                    Spacer()
+                }
+            }
 
             VStack(spacing: 0) {
                 Spacer()

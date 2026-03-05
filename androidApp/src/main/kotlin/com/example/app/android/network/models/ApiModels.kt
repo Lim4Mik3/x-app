@@ -86,61 +86,30 @@ data class FeedResponse(
 
 data class FeedPost(
     val id: String,
-    val originalText: String,
-    val normalizedText: String,
+    val content: String,
     val type: String,
-    val typeConfidence: Double,
+    val typeColor: String?,
     val categories: List<String>,
-    val createdAt: String,
-    val latitude: Double?,
-    val longitude: Double?
+    val postedAt: String,
+    val signalsCount: Int,
+    val commentsCount: Int,
+    val distance: String?
 ) {
-    val timeAgo: String get() = formatTimeAgo(createdAt)
-
-    val typeLabel: String
-        get() = when (type.uppercase()) {
-            "NARRAR" -> "Relato"
-            "ALERTAR" -> "Alerta"
-            "VENDER" -> "Com\u00e9rcio"
-            "INFORMAR" -> "Informa\u00e7\u00e3o"
-            "PEDIR" -> "Pedido"
-            "RECLAMAR" -> "Reclama\u00e7\u00e3o"
-            "DENUNCIAR" -> "Den\u00fancia"
-            else -> type
-        }
-
-    val categoryLabel: String?
-        get() = categories.firstOrNull()?.let { cat ->
-            when (cat.uppercase()) {
-                "SEGURANCA_CRIME" -> "Crime"
-                "INFRAESTRUTURA" -> "Infraestrutura"
-                "TRANSITO" -> "Tr\u00e2nsito"
-                "CLIMA" -> "Clima"
-                "SAUDE" -> "Sa\u00fade"
-                "COMUNIDADE" -> "Comunidade"
-                "COMERCIO" -> "Com\u00e9rcio"
-                "EVENTO" -> "Evento"
-                "ANIMAL" -> "Animais"
-                "ESPORTE" -> "Esporte"
-                "TRANSPORTE" -> "Transporte"
-                else -> cat.replace("_", " ").lowercase()
-                    .replaceFirstChar { it.uppercase() }
-            }
-        }
+    val timeAgo: String get() = formatTimeAgo(postedAt)
 
     companion object {
         fun fromJson(json: JSONObject): FeedPost {
             val cats = json.optJSONArray("categories") ?: JSONArray()
             return FeedPost(
                 id = json.getString("id"),
-                originalText = json.optString("original_text", ""),
-                normalizedText = json.optString("normalized_text", ""),
+                content = json.optString("content", ""),
                 type = json.optString("type", ""),
-                typeConfidence = json.optDouble("type_confidence", 0.0),
+                typeColor = json.optString("type_color", null),
                 categories = (0 until cats.length()).map { cats.getString(it) },
-                createdAt = json.optString("created_at", ""),
-                latitude = if (json.isNull("latitude")) null else json.optDouble("latitude"),
-                longitude = if (json.isNull("longitude")) null else json.optDouble("longitude")
+                postedAt = json.optString("posted_at", ""),
+                signalsCount = json.optInt("signals_count", 0),
+                commentsCount = json.optInt("comments_count", 0),
+                distance = json.optString("distance", null)
             )
         }
     }
@@ -300,6 +269,13 @@ private val isoFormat = ThreadLocal.withInitial {
     SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
+}
+
+fun toHashtag(text: String): String {
+    val camel = text.split(" ").joinToString("") { word ->
+        word.replaceFirstChar { it.uppercase() }
+    }
+    return "#$camel"
 }
 
 fun formatTimeAgo(isoDate: String): String {

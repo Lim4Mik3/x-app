@@ -78,3 +78,11 @@
 
 /* Stories */
 "stories_in_city" = "In %@";
+
+/* Login */
+"login_header" = "To continue, sign in";
+"login_title" = "Welcome to Sinal";
+"login_subtitle" = "Find out what's happening near you";
+"login_google" = "Continue with Google";
+"login_community" = "It'll be great to have you. Contribute with everyone!";
+"login_terms" = "By continuing, you agree to our Terms of Use and Privacy Policy";

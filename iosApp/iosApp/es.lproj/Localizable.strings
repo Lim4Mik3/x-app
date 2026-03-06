@@ -78,3 +78,11 @@
 
 /* Stories */
 "stories_in_city" = "En %@";
+
+/* Login */
+"login_header" = "Para continuar, inicia sesión";
+"login_title" = "Bienvenido a Sinal";
+"login_subtitle" = "Entérate de lo que pasa cerca de ti";
+"login_google" = "Continuar con Google";
+"login_community" = "Será genial tenerte. ¡Contribuye con todos!";
+"login_terms" = "Al continuar, aceptas nuestros Términos de Uso y Política de Privacidad";

@@ -30,7 +30,7 @@ struct MainScreen: View {
     @State private var storyTransitionExpanded = false
 
     private func requireAuth(_ action: @escaping () -> Void) {
-        if isLoggedIn { action() } else { showLoginOverlay = true }
+        if isLoggedIn { action() } else { withAnimation(.easeOut(duration: 0.25)) { showLoginOverlay = true } }
     }
 
     var body: some View {
@@ -45,7 +45,7 @@ struct MainScreen: View {
                             isLoading: isFeedLoading,
                             onScrollOffsetChanged: { scrollState.onScrollOffsetChanged($0) },
                             topInset: scrollState.headerHeight,
-                            bottomInset: scrollState.bottomBarHeight,
+                            bottomInset: isLoggedIn ? scrollState.bottomBarHeight : 0,
                             onSignalClick: { post in requireAuth { showSignalForPost = post } },
                             onCommentClick: { post in requireAuth { showCommentForPost = post } },
                             onShareClick: { _ in },
@@ -124,20 +124,38 @@ struct MainScreen: View {
                     .offset(y: -scrollState.topBarOffset)
                 }
 
-                // Bottom bar
-                VStack {
-                    Spacer()
-                    BottomTabBar(selectedTab: $selectedTab)
-                        .background(colors.surface)
-                        .background(
-                            GeometryReader { proxy in
-                                Color.clear.onAppear {
-                                    scrollState.bottomBarHeight = proxy.size.height
-                                }
-                            }
+                // Status bar gradient (visible when header is hidden)
+                if selectedTab == .home && scrollState.topBarOffset > 0 {
+                    VStack {
+                        LinearGradient(
+                            colors: [.black, .black.opacity(0)],
+                            startPoint: .top,
+                            endPoint: .bottom
                         )
+                        .frame(height: geometry.safeAreaInsets.top * 1.5)
+                        .opacity(Double(min(scrollState.topBarOffset / scrollState.headerHeight, 1)))
+                        .ignoresSafeArea(edges: .top)
+                        Spacer()
+                    }
+                    .allowsHitTesting(false)
                 }
-                .offset(y: scrollState.bottomBarOffset)
+
+                // Bottom bar
+                if isLoggedIn {
+                    VStack {
+                        Spacer()
+                        BottomTabBar(selectedTab: $selectedTab)
+                            .background(colors.surface)
+                            .background(
+                                GeometryReader { proxy in
+                                    Color.clear.onAppear {
+                                        scrollState.bottomBarHeight = proxy.size.height
+                                    }
+                                }
+                            )
+                    }
+                    .offset(y: scrollState.bottomBarOffset)
+                }
 
                 // FAB
                 if selectedTab == .home {
@@ -176,9 +194,9 @@ struct MainScreen: View {
                     LoginScreen(
                         onLoginSuccess: {
                             onLoginSuccess()
-                            showLoginOverlay = false
+                            withAnimation(.easeIn(duration: 0.2)) { showLoginOverlay = false }
                         },
-                        onDismiss: { showLoginOverlay = false }
+                        onDismiss: { withAnimation(.easeIn(duration: 0.2)) { showLoginOverlay = false } }
                     )
                     .zIndex(20)
                     .transition(.opacity)

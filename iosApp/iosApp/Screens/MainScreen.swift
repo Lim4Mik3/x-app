@@ -124,11 +124,11 @@ struct MainScreen: View {
                     .offset(y: -scrollState.topBarOffset)
                 }
 
-                // Status bar gradient (visible when header is hidden)
+                // Top gradient (visible when header is hidden)
                 if selectedTab == .home && scrollState.topBarOffset > 0 {
                     VStack {
                         LinearGradient(
-                            colors: [.black, .black.opacity(0)],
+                            colors: [colors.background, colors.background.opacity(0)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -137,6 +137,22 @@ struct MainScreen: View {
                         .ignoresSafeArea(edges: .top)
                         Spacer()
                     }
+                    .allowsHitTesting(false)
+                }
+
+                // Bottom gradient (visible when bottom bar is hidden or user is not logged in)
+                if selectedTab == .home && (!isLoggedIn || scrollState.bottomBarOffset > 0) {
+                    VStack(spacing: 0) {
+                        Spacer()
+                        LinearGradient(
+                            colors: [colors.background.opacity(0), colors.background],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(height: geometry.safeAreaInsets.bottom * 1.5)
+                        .opacity(!isLoggedIn ? 1 : Double(min(scrollState.bottomBarOffset / scrollState.bottomBarHeight, 1)))
+                    }
+                    .ignoresSafeArea(edges: .bottom)
                     .allowsHitTesting(false)
                 }
 

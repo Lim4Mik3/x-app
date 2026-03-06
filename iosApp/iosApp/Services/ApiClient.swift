@@ -48,7 +48,7 @@ final class ApiClient {
 
     func getMe() async throws -> ApiUser {
         let data = try await get(path: "/auth/me")
-        return try ApiUser.from(data)
+        return ApiUser.from(data)
     }
 
     // MARK: - Feed
@@ -61,6 +61,12 @@ final class ApiClient {
     }
 
     // MARK: - Post
+
+    func getMyPosts() async throws -> [ApiFeedPost] {
+        let data = try await get(path: "/posts/me")
+        guard let arr = data["posts"] as? [[String: Any]] else { return [] }
+        return arr.compactMap { ApiFeedPost.from($0) }
+    }
 
     func createPost(text: String, lat: Double, lng: Double) async throws -> [String: Any] {
         let body: [String: Any] = ["post": text, "lat": lat, "lng": lng]
@@ -150,6 +156,9 @@ final class ApiClient {
         if auth, let token = TokenManager.shared.accessToken {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+        #if DEBUG
+        req.setValue("dev-user-001", forHTTPHeaderField: "X-Dev-User-ID")
+        #endif
 
         if let body = body, method != "GET" {
             req.httpBody = try JSONSerialization.data(withJSONObject: body)

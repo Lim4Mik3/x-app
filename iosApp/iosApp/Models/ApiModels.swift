@@ -38,22 +38,82 @@ struct TokenPair {
 
 struct ApiUser {
     let id: String
-    let displayName: String?
+    let name: String?
     let email: String?
     let phone: String?
     let avatarUrl: String?
-    let addressCity: String?
-    let addressState: String?
+    let locale: String?
+    let addresses: [ApiAddress]
+    let accounts: [ApiAccount]
+
+    var displayName: String? { name }
+
+    var primaryAddress: ApiAddress? { addresses.first { $0.isPrimary } ?? addresses.first }
+
+    var initials: String {
+        let parts = (name ?? "").split(separator: " ")
+        if parts.count >= 2 {
+            return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
+        }
+        return String((name ?? "?").prefix(2)).uppercased()
+    }
 
     static func from(_ dict: [String: Any]) -> ApiUser {
-        ApiUser(
+        let addrs = (dict["addresses"] as? [[String: Any]] ?? []).compactMap { ApiAddress.from($0) }
+        let accs = (dict["accounts"] as? [[String: Any]] ?? []).compactMap { ApiAccount.from($0) }
+        return ApiUser(
             id: dict["id"] as? String ?? "",
-            displayName: dict["display_name"] as? String,
+            name: dict["name"] as? String ?? dict["display_name"] as? String,
             email: dict["email"] as? String,
             phone: dict["phone"] as? String,
-            avatarUrl: dict["avatar_url"] as? String,
-            addressCity: dict["address_city"] as? String,
-            addressState: dict["address_state"] as? String
+            avatarUrl: dict["avatar_url"] as? String ?? dict["avatar"] as? String,
+            locale: dict["locale"] as? String,
+            addresses: addrs,
+            accounts: accs
+        )
+    }
+}
+
+struct ApiAddress {
+    let label: String
+    let street: String
+    let number: String
+    let complement: String?
+    let neighborhood: String
+    let city: String
+    let state: String
+    let country: String
+    let zipCode: String
+    let isPrimary: Bool
+
+    var formatted: String { "\(street), \(number)" }
+    var location: String { "\(city), \(state)" }
+
+    static func from(_ dict: [String: Any]) -> ApiAddress? {
+        ApiAddress(
+            label: dict["label"] as? String ?? "",
+            street: dict["street"] as? String ?? "",
+            number: dict["number"] as? String ?? "",
+            complement: dict["complement"] as? String,
+            neighborhood: dict["neighborhood"] as? String ?? "",
+            city: dict["city"] as? String ?? "",
+            state: dict["state"] as? String ?? "",
+            country: dict["country"] as? String ?? "",
+            zipCode: dict["zip_code"] as? String ?? "",
+            isPrimary: dict["is_primary"] as? Bool ?? false
+        )
+    }
+}
+
+struct ApiAccount {
+    let provider: String
+    let connectedAt: String
+
+    static func from(_ dict: [String: Any]) -> ApiAccount? {
+        guard let provider = dict["provider"] as? String else { return nil }
+        return ApiAccount(
+            provider: provider,
+            connectedAt: dict["connected_at"] as? String ?? ""
         )
     }
 }

@@ -22,6 +22,8 @@
 		51D4EB7E36C581DB3272405B /* ApiModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF6B77B1617BE5A0176444DB /* ApiModels.swift */; };
 		56739A65E7DFD193CA84C8BC /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1793CCD2031E3E7DC08D30C8 /* AppTheme.swift */; };
 		56B0305B5D3847FC6B326502 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8509E5A49E4A5CAAEB3ADB /* ContentView.swift */; };
+		60CE61AD2F5A9C7800248AE5 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 60CE61AC2F5A9C7800248AE5 /* GoogleSignIn */; };
+		60CE61AF2F5A9C7C00248AE5 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 60CE61AE2F5A9C7C00248AE5 /* GoogleSignInSwift */; };
 		63ABC20BA2482EA3E9327E09 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C6FF8EDE0D3AC84DB127604 /* LocationService.swift */; };
 		68EC2A408981F00F1C6630EB /* MyPostsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66B0459DB000FE9165878B60 /* MyPostsScreen.swift */; };
 		6B2031D9196667F65FD358E5 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 37A6BA4C5AAF06904D9C889E /* InfoPlist.strings */; };
@@ -87,6 +89,18 @@
 		F74852DFD929899F2E95F58A /* StoriesRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StoriesRow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		60CE61AA2F5A9C6200248AE5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				60CE61AD2F5A9C7800248AE5 /* GoogleSignIn in Frameworks */,
+				60CE61AF2F5A9C7C00248AE5 /* GoogleSignInSwift in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
 		1D118AA5F3CC0477DF2FE1D2 /* Models */ = {
 			isa = PBXGroup;
@@ -127,6 +141,7 @@
 			isa = PBXGroup;
 			children = (
 				1DB4B685CAEE8BEFEBBAEF94 /* iosApp */,
+				60CE61AB2F5A9C7800248AE5 /* Frameworks */,
 				94C98B8B3A2BFC1966447269 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -139,6 +154,13 @@
 				1793CCD2031E3E7DC08D30C8 /* AppTheme.swift */,
 			);
 			path = Theme;
+			sourceTree = "<group>";
+		};
+		60CE61AB2F5A9C7800248AE5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		6F4CA40730640D5C919756FD /* Components */ = {
@@ -211,6 +233,7 @@
 			buildPhases = (
 				297B59D9CE634556D6007C40 /* Sources */,
 				1623B02D10928C8101C1F806 /* Resources */,
+				60CE61AA2F5A9C6200248AE5 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -247,6 +270,9 @@
 			);
 			mainGroup = 38B69C3F79CD97858CF7B609;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				60CE61A72F5A9C0D00248AE5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
 			productRefGroup = 94C98B8B3A2BFC1966447269 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -536,6 +562,30 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		60CE61A72F5A9C0D00248AE5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		60CE61AC2F5A9C7800248AE5 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60CE61A72F5A9C0D00248AE5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		60CE61AE2F5A9C7C00248AE5 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60CE61A72F5A9C0D00248AE5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 242FB5348943441C388468CE /* Project object */;
 }

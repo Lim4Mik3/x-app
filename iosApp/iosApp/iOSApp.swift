@@ -1,4 +1,5 @@
 import SwiftUI
+import GoogleSignIn
 
 @main
 struct iOSApp: App {
@@ -9,6 +10,9 @@ struct iOSApp: App {
             ContentView()
                 .withAppTheme()
                 .environmentObject(languageManager)
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
+                }
         }
     }
 }

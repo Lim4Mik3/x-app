@@ -1,5 +1,6 @@
 import SwiftUI
 import AuthenticationServices
+import GoogleSignIn
 
 struct LoginScreen: View {
     var onLoginSuccess: () -> Void
@@ -92,7 +93,7 @@ struct LoginScreen: View {
                     .cornerRadius(12)
 
                     Button {
-                        // TODO: Google sign in
+                        handleGoogleSignIn()
                     } label: {
                         HStack(spacing: 10) {
                             Image(systemName: "g.circle.fill")
@@ -162,6 +163,52 @@ struct LoginScreen: View {
             if isLoading {
                 ProgressView()
                     .tint(colors.accent)
+            }
+        }
+    }
+
+    private func handleGoogleSignIn() {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootVC = windowScene.windows.first?.rootViewController else { return }
+
+        isLoading = true
+        errorMessage = nil
+
+        GIDSignIn.sharedInstance.signIn(withPresenting: rootVC) { result, error in
+            if let error = error {
+                isLoading = false
+                if (error as NSError).code != GIDSignInError.canceled.rawValue {
+                    errorMessage = "Erro na autenticação"
+                }
+                return
+            }
+
+            guard let idToken = result?.user.idToken?.tokenString else {
+                isLoading = false
+                errorMessage = "Token não recebido do Google"
+                return
+            }
+
+            Task {
+                do {
+                    let response = try await ApiClient.shared.socialLogin(provider: "google", token: idToken)
+                    TokenManager.shared.saveAuth(
+                        accessToken: response.accessToken,
+                        refreshToken: response.refreshToken
+                    )
+                    TokenManager.shared.userId = response.user.id
+                    TokenManager.shared.displayName = response.user.displayName ?? response.user.email
+
+                    await MainActor.run {
+                        isLoading = false
+                        onLoginSuccess()
+                    }
+                } catch {
+                    await MainActor.run {
+                        isLoading = false
+                        errorMessage = error.localizedDescription
+                    }
+                }
             }
         }
     }

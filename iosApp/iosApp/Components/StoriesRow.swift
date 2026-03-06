@@ -21,10 +21,16 @@ let mockStories: [StoryItem] = [
     StoryItem(id: "8", label: "Bela Vista", color: .mint),
 ]
 
+struct StoryTapInfo {
+    let story: StoryItem
+    let center: CGPoint
+    let size: CGFloat
+}
+
 struct StoriesRow: View {
     let stories: [StoryItem]
     var locationName: String = ""
-    var onStoryClick: (StoryItem) -> Void = { _ in }
+    var onStoryTap: (StoryTapInfo) -> Void = { _ in }
 
     @Environment(\.appColors) private var colors
 
@@ -40,32 +46,40 @@ struct StoriesRow: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(stories) { story in
-                        Button {
-                            onStoryClick(story)
-                        } label: {
-                            VStack(spacing: 5) {
-                                ZStack {
-                                    if story.hasUnread {
-                                        SpinningBorder(color: colors.accent)
-                                            .frame(width: 60, height: 60)
-                                    } else {
-                                        Circle()
-                                            .stroke(colors.divider, lineWidth: 1)
-                                            .frame(width: 60, height: 60)
-                                    }
+                        VStack(spacing: 5) {
+                            ZStack {
+                                if story.hasUnread {
+                                    SpinningBorder(color: colors.accent)
+                                        .frame(width: 60, height: 60)
+                                } else {
                                     Circle()
-                                        .fill(story.color.opacity(0.25))
-                                        .frame(width: 52, height: 52)
+                                        .stroke(colors.divider, lineWidth: 1)
+                                        .frame(width: 60, height: 60)
                                 }
-                                Text(story.label)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(colors.textPrimary)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
+                                Circle()
+                                    .fill(story.color.opacity(0.25))
+                                    .frame(width: 52, height: 52)
                             }
-                            .frame(width: 68)
+                            .overlay(
+                                GeometryReader { geo in
+                                    Color.clear.contentShape(Circle())
+                                        .onTapGesture {
+                                            let frame = geo.frame(in: .global)
+                                            onStoryTap(StoryTapInfo(
+                                                story: story,
+                                                center: CGPoint(x: frame.midX, y: frame.midY),
+                                                size: 52
+                                            ))
+                                        }
+                                }
+                            )
+                            Text(story.label)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(colors.textPrimary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
-                        .buttonStyle(.plain)
+                        .frame(width: 68)
                     }
                 }
                 .padding(.horizontal, 16)

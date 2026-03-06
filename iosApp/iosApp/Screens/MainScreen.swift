@@ -26,6 +26,8 @@ struct MainScreen: View {
     @State private var showSignalForPost: ApiFeedPost?
     @State private var showReportForPost: ApiFeedPost?
     @State private var showStoryViewer: StoryItem?
+    @State private var storyTransition: StoryTapInfo?
+    @State private var storyTransitionExpanded = false
 
     private func requireAuth(_ action: @escaping () -> Void) {
         if isLoggedIn { action() } else { showLoginOverlay = true }
@@ -48,7 +50,23 @@ struct MainScreen: View {
                             onCommentClick: { post in requireAuth { showCommentForPost = post } },
                             onShareClick: { _ in },
                             onReportClick: { post in requireAuth { showReportForPost = post } },
-                            onStoryClick: { story in showStoryViewer = story },
+                            onStoryTap: { tapInfo in
+                                storyTransition = tapInfo
+                                storyTransitionExpanded = false
+
+                                withAnimation(.timingCurve(0.4, 0, 0.2, 1, duration: 0.15)) {
+                                    storyTransitionExpanded = true
+                                }
+
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.13) {
+                                    showStoryViewer = tapInfo.story
+                                }
+
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                    storyTransition = nil
+                                    storyTransitionExpanded = false
+                                }
+                            },
                             locationName: cityName,
                             onLoadMore: {
                                 if hasMore && !isFeedLoading && feedCursor != nil {
@@ -166,6 +184,23 @@ struct MainScreen: View {
                     .transition(.opacity)
                 }
 
+                // Story expand transition
+                if let tap = storyTransition {
+                    let screen = UIScreen.main.bounds
+                    let maxDx = max(tap.center.x, screen.width - tap.center.x)
+                    let maxDy = max(tap.center.y, screen.height - tap.center.y)
+                    let expandedSize = sqrt(maxDx * maxDx + maxDy * maxDy) * 2
+                    let currentSize = storyTransitionExpanded ? expandedSize : tap.size
+
+                    Circle()
+                        .fill(Color(red: 0.1, green: 0.1, blue: 0.18))
+                        .frame(width: currentSize, height: currentSize)
+                        .position(tap.center)
+                        .ignoresSafeArea()
+                        .zIndex(14)
+                        .allowsHitTesting(false)
+                }
+
                 // Story viewer
                 if let story = showStoryViewer {
                     let initialIndex = mockStories.firstIndex(where: { $0.id == story.id }) ?? 0
@@ -176,7 +211,7 @@ struct MainScreen: View {
                         onDismiss: { showStoryViewer = nil }
                     )
                     .zIndex(15)
-                    .transition(.opacity)
+                    .transition(.identity)
                 }
 
                 // Sheets

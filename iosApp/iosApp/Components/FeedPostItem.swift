@@ -69,13 +69,8 @@ struct FeedPostItem: View {
                         .foregroundColor(colors.textSecondary)
                         .lineLimit(1)
                         .padding(.top, 16)
+                        .padding(.bottom, 8)
                 }
-
-                // Divider
-                Rectangle()
-                    .fill(colors.divider)
-                    .frame(height: 0.5)
-                    .padding(.top, 10)
 
                 // Interaction buttons
                 HStack(spacing: 0) {
@@ -107,16 +102,20 @@ struct FeedPostItem: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.top, 10)
+                .padding(.top, 2)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
 
+            Spacer().frame(height: 2)
+
             Rectangle()
-                .fill(colors.divider.opacity(0.4))
-                .frame(height: 6)
+                .fill(colors.divider)
+                .frame(height: 0.5)
+
+            Spacer().frame(height: 6)
         }
-        .background(colors.surface)
+        .background(colors.background)
     }
 }
 
@@ -148,4 +147,55 @@ struct InteractionLabel: View {
         }
         .foregroundColor(colors.textSecondary)
     }
+}
+
+// MARK: - Preview
+
+#Preview("Feed Post") {
+    let mockPosts = [
+        ApiFeedPost(
+            id: "1",
+            content: "Acabou a luz aqui no bairro, alguem mais ta sem energia? Ja faz mais de 2 horas e nada da companhia resolver.",
+            type: "Alerta",
+            typeColor: "#FF6B35",
+            categories: ["Energia", "Infraestrutura"],
+            postedAt: "2026-03-06T14:30:00",
+            signalsCount: 12,
+            commentsCount: 5,
+            distance: "350m"
+        ),
+        ApiFeedPost(
+            id: "2",
+            content: "Feira livre amanha na praca central, quem quiser frutas frescas aparece cedo que vale a pena!",
+            type: "Evento",
+            typeColor: "#4CAF50",
+            categories: ["Comunidade"],
+            postedAt: "2026-03-06T10:00:00",
+            signalsCount: 3,
+            commentsCount: 0,
+            distance: "1.2km"
+        ),
+        ApiFeedPost(
+            id: "3",
+            content: "Cuidado com o buraco na rua das flores esquina com a av. brasil, quase perdi o pneu do carro ali.",
+            type: "Perigo",
+            typeColor: "#F44336",
+            categories: ["Transito", "Infraestrutura"],
+            postedAt: "2026-03-05T22:15:00",
+            signalsCount: 28,
+            commentsCount: 11,
+            distance: "800m"
+        ),
+    ]
+
+    ScrollView {
+        LazyVStack(spacing: 0) {
+            ForEach(mockPosts) { post in
+                FeedPostItem(post: post)
+            }
+        }
+    }
+    .background(Color.black)
+    .withAppTheme()
+    .preferredColorScheme(.dark)
 }

@@ -75,3 +75,6 @@
 "connected_connect" = "Conectar";
 "profile_change_photo" = "Alterar foto";
 "profile_logout" = "Sair da conta";
+
+/* Stories */
+"stories_in_city" = "Em %@";

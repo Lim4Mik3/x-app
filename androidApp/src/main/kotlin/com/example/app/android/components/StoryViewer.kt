@@ -20,8 +20,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -46,6 +48,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,12 +78,16 @@ fun StoryViewer(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = AppTheme.colors
     var currentStoryIndex by remember { mutableIntStateOf(initialStoryIndex) }
     var currentContentIndex by remember { mutableIntStateOf(0) }
     val progress = remember { Animatable(0f) }
     val dragOffset = remember { Animatable(0f) }
     val verticalDragOffset = remember { Animatable(0f) }
+    val infoPanelOffset = remember { Animatable(0f) }
+    var isInfoPanelOpen by remember { mutableStateOf(false) }
     var screenWidth by remember { mutableFloatStateOf(1f) }
+    var screenHeight by remember { mutableFloatStateOf(1f) }
     val scope = rememberCoroutineScope()
     var isDragging by remember { mutableStateOf(false) }
 
@@ -91,9 +98,22 @@ fun StoryViewer(
     val swipeThreshold = 0.3f
     val swipeProgress = if (screenWidth > 0) dragOffset.value / screenWidth else 0f
 
+    val swipeOutEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
+
+    // Animated story switch (slide out + switch + reset)
+    suspend fun animateStorySwitch(direction: Int) {
+        // direction: -1 = next (slide left), +1 = prev (slide right)
+        val target = direction * screenWidth
+        dragOffset.animateTo(target, tween(220, easing = swipeOutEasing))
+        dragOffset.snapTo(0f)
+        progress.snapTo(0f)
+        currentStoryIndex -= direction
+        currentContentIndex = 0
+    }
+
     // Animate progress for current content
-    LaunchedEffect(currentStoryIndex, currentContentIndex, isDragging) {
-        if (isDragging) return@LaunchedEffect
+    LaunchedEffect(currentStoryIndex, currentContentIndex, isDragging, isInfoPanelOpen) {
+        if (isDragging || isInfoPanelOpen) return@LaunchedEffect
         dragOffset.snapTo(0f)
         val duration = contents.getOrNull(currentContentIndex)?.displayDurationMs ?: 8000L
         progress.snapTo(0f)
@@ -102,8 +122,7 @@ fun StoryViewer(
         if (currentContentIndex < contents.lastIndex) {
             currentContentIndex++
         } else if (currentStoryIndex < stories.lastIndex) {
-            currentStoryIndex++
-            currentContentIndex = 0
+            animateStorySwitch(-1)
         } else {
             onDismiss()
         }
@@ -112,9 +131,10 @@ fun StoryViewer(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black)
-            .onSizeChanged { screenWidth = it.width.toFloat() }
-            .windowInsetsPadding(WindowInsets.statusBars)
+            .onSizeChanged {
+                screenWidth = it.width.toFloat()
+                screenHeight = it.height.toFloat()
+            }
             .pointerInput(currentStoryIndex) {
                 val slop = viewConfiguration.touchSlop
                 awaitEachGesture {
@@ -135,15 +155,13 @@ fun StoryViewer(
                                 if (currentContentIndex > 0) {
                                     currentContentIndex--
                                 } else if (canGoPrevStory) {
-                                    currentStoryIndex--
-                                    currentContentIndex = 0
+                                    scope.launch { animateStorySwitch(1) }
                                 }
                             } else {
                                 if (currentContentIndex < contents.lastIndex) {
                                     currentContentIndex++
                                 } else if (canGoNextStory) {
-                                    currentStoryIndex++
-                                    currentContentIndex = 0
+                                    scope.launch { animateStorySwitch(-1) }
                                 } else {
                                     onDismiss()
                                 }
@@ -164,7 +182,8 @@ fun StoryViewer(
 
                     when (direction) {
                         1 -> {
-                            // HORIZONTAL: swipe between stories
+                            // HORIZONTAL: blocked when info panel open
+                            if (isInfoPanelOpen) return@awaitEachGesture
                             isDragging = true
                             scope.launch { dragOffset.snapTo(accX) }
 
@@ -180,7 +199,6 @@ fun StoryViewer(
                             }
 
                             val normalized = dragOffset.value / screenWidth
-                            val swipeOutEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
                             scope.launch {
                                 when {
                                     normalized < -swipeThreshold && canGoNextStory -> {
@@ -212,46 +230,101 @@ fun StoryViewer(
                             }
                         }
                         2 -> {
-                            // VERTICAL: drag down to dismiss with resistance
-                            if (accY <= 0) return@awaitEachGesture
-                            isDragging = true
                             val screenH = size.height.toFloat()
-                            scope.launch {
-                                verticalDragOffset.snapTo(applyResistance(accY, screenH))
-                            }
-
-                            drag(down.id) { change ->
-                                accY += change.positionChange().y
-                                change.consume()
-                                val raw = accY.coerceAtLeast(0f)
-                                scope.launch {
-                                    verticalDragOffset.snapTo(applyResistance(raw, screenH))
-                                }
-                            }
-
-                            val normalizedY = verticalDragOffset.value / screenH
+                            val panelH = screenH * 0.9f
                             val dismissEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
-                            val snapBackEasing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
-                            scope.launch {
-                                if (normalizedY > 0.35f) {
-                                    verticalDragOffset.animateTo(
-                                        screenH,
-                                        tween(280, easing = dismissEasing)
-                                    )
-                                    onDismiss()
-                                } else {
-                                    verticalDragOffset.animateTo(
-                                        0f,
-                                        spring(dampingRatio = 0.7f, stiffness = 400f)
-                                    )
+
+                            if (accY < 0 && !isInfoPanelOpen) {
+                                // SWIPE UP → open info panel (follow finger)
+                                isDragging = true
+                                isInfoPanelOpen = true
+                                scope.launch {
+                                    infoPanelOffset.snapTo((-accY).coerceIn(0f, panelH))
                                 }
-                                isDragging = false
+
+                                drag(down.id) { change ->
+                                    accY += change.positionChange().y
+                                    change.consume()
+                                    scope.launch {
+                                        infoPanelOffset.snapTo((-accY).coerceIn(0f, panelH))
+                                    }
+                                }
+
+                                // On release: snap open or closed
+                                scope.launch {
+                                    if (infoPanelOffset.value > panelH * 0.3f) {
+                                        infoPanelOffset.animateTo(panelH, spring(dampingRatio = 0.82f, stiffness = 300f))
+                                    } else {
+                                        infoPanelOffset.animateTo(0f, spring(dampingRatio = 0.82f, stiffness = 300f))
+                                        isInfoPanelOpen = false
+                                    }
+                                    isDragging = false
+                                }
+                            } else if (accY > 0 && isInfoPanelOpen) {
+                                // SWIPE DOWN → close info panel (follow finger)
+                                isDragging = true
+                                val startOffset = infoPanelOffset.value
+                                scope.launch {
+                                    infoPanelOffset.snapTo((startOffset - accY).coerceIn(0f, panelH))
+                                }
+
+                                drag(down.id) { change ->
+                                    accY += change.positionChange().y
+                                    change.consume()
+                                    scope.launch {
+                                        infoPanelOffset.snapTo((startOffset - accY).coerceIn(0f, panelH))
+                                    }
+                                }
+
+                                // On release: snap open or closed
+                                scope.launch {
+                                    if (infoPanelOffset.value < panelH * 0.45f) {
+                                        infoPanelOffset.animateTo(0f, spring(dampingRatio = 0.82f, stiffness = 300f))
+                                        isInfoPanelOpen = false
+                                    } else {
+                                        infoPanelOffset.animateTo(panelH, spring(dampingRatio = 0.82f, stiffness = 300f))
+                                    }
+                                    isDragging = false
+                                }
+                            } else if (accY > 0 && !isInfoPanelOpen) {
+                                // SWIPE DOWN → dismiss story viewer
+                                isDragging = true
+                                scope.launch {
+                                    verticalDragOffset.snapTo(applyResistance(accY, screenH))
+                                }
+
+                                drag(down.id) { change ->
+                                    accY += change.positionChange().y
+                                    change.consume()
+                                    val raw = accY.coerceAtLeast(0f)
+                                    scope.launch {
+                                        verticalDragOffset.snapTo(applyResistance(raw, screenH))
+                                    }
+                                }
+
+                                val normalizedY = verticalDragOffset.value / screenH
+                                scope.launch {
+                                    if (normalizedY > 0.35f) {
+                                        verticalDragOffset.animateTo(
+                                            screenH,
+                                            tween(280, easing = dismissEasing)
+                                        )
+                                        onDismiss()
+                                    } else {
+                                        verticalDragOffset.animateTo(
+                                            0f,
+                                            spring(dampingRatio = 0.7f, stiffness = 400f)
+                                        )
+                                    }
+                                    isDragging = false
+                                }
                             }
                         }
                     }
                 }
             }
     ) {
+        // Background panel — fades on dismiss drag
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -260,9 +333,25 @@ fun StoryViewer(
                     if (vOffset > 0f) {
                         val screenH = this.size.height
                         val norm = if (screenH > 0) (vOffset / screenH).coerceIn(0f, 1f) else 0f
-                        translationY = vOffset
-                        alpha = 1f - norm * 0.5f
+                        alpha = (1f - norm * 2.5f).coerceIn(0f, 1f)
                     }
+                }
+                .background(colors.background)
+        )
+
+        // Story content wrapper — moves on drag, scales on panel open
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val vOffset = verticalDragOffset.value
+                    val panelShift = infoPanelOffset.value
+                    val panelH = if (screenHeight > 0) screenHeight * 0.9f else 0f
+                    val openProgress = if (panelH > 0) (panelShift / panelH).coerceIn(0f, 1f) else 0f
+                    translationY = vOffset - panelShift + (openProgress * 10f)
+                    val s = 1f - openProgress * 0.02f
+                    scaleX = s
+                    scaleY = s
                 }
         ) {
         // Previous story (behind, when swiping right)
@@ -316,6 +405,23 @@ fun StoryViewer(
                 }
         )
         } // vertical offset wrapper
+
+        // Info panel
+        if (infoPanelOffset.value > 0f) {
+            val panelH = screenHeight * 0.9f
+            val density = LocalDensity.current
+            StoryInfoPanel(
+                storyLabel = story.label,
+                contentText = contents.getOrNull(currentContentIndex)?.text ?: "",
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(with(density) { panelH.toDp() })
+                    .graphicsLayer {
+                        translationY = panelH - infoPanelOffset.value
+                    }
+            )
+        }
     }
 }
 
@@ -433,5 +539,86 @@ private fun StoryPage(
                 )
             }
         }
+
     }
 }
+
+@Composable
+private fun StoryInfoPanel(
+    storyLabel: String,
+    contentText: String,
+    modifier: Modifier = Modifier
+) {
+    val colors = AppTheme.colors
+    val panelShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+    Column(
+        modifier = modifier
+            .background(colors.surface, panelShape)
+            .border(1.dp, colors.divider, panelShape)
+            .padding(top = 20.dp, bottom = 32.dp)
+    ) {
+        Text(
+            text = "Detalhes",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.textPrimary,
+            modifier = Modifier.padding(horizontal = 20.dp)
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        Text(
+            text = contentText,
+            fontSize = 14.sp,
+            color = colors.textSecondary,
+            lineHeight = 20.sp,
+            modifier = Modifier.padding(horizontal = 20.dp)
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .height(0.5.dp)
+                .background(colors.divider)
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Text(
+            text = "Coment\u00e1rios",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.textPrimary,
+            modifier = Modifier.padding(horizontal = 20.dp)
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        mockPanelComments.forEach { (name, text) ->
+            Row(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(colors.avatarBackground)
+                )
+                Column(modifier = Modifier.padding(start = 10.dp)) {
+                    Text(name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+                    Text(text, fontSize = 13.sp, color = colors.textSecondary, lineHeight = 18.sp)
+                }
+            }
+        }
+    }
+}
+
+private val mockPanelComments = listOf(
+    "Maria S." to "Passei por l\u00e1 agora e realmente est\u00e1 complicado!",
+    "Jo\u00e3o P." to "Obrigado pelo aviso, vou desviar.",
+    "Ana L." to "J\u00e1 tem uns 3 dias assim..."
+)

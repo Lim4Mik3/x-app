@@ -19,6 +19,7 @@ struct MainScreen: View {
     @State private var feedCursor: String?
     @State private var hasMore = true
     @State private var locationName = "Carregando..."
+    @State private var cityName = ""
 
     // Interaction sheets
     @State private var showCommentForPost: ApiFeedPost?
@@ -48,6 +49,7 @@ struct MainScreen: View {
                             onShareClick: { _ in },
                             onReportClick: { post in requireAuth { showReportForPost = post } },
                             onStoryClick: { story in showStoryViewer = story },
+                            locationName: cityName,
                             onLoadMore: {
                                 if hasMore && !isFeedLoading && feedCursor != nil {
                                     loadFeed()
@@ -270,6 +272,7 @@ struct MainScreen: View {
         CLGeocoder().reverseGeocodeLocation(loc) { placemarks, _ in
             if let p = placemarks?.first {
                 locationName = p.subLocality ?? p.locality ?? p.subAdministrativeArea ?? "Ao seu redor"
+                cityName = p.locality ?? p.subAdministrativeArea ?? ""
             }
         }
     }

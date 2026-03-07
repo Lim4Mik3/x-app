@@ -16,6 +16,7 @@ class LanguageManager: ObservableObject {
         currentLanguage = code
         UserDefaults.standard.set(code, forKey: "app_language")
         bundle = LanguageManager.loadBundle(for: code)
+        SignalKeysCache.shared.invalidate()
     }
 
     func s(_ key: String) -> String {

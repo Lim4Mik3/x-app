@@ -38,6 +38,7 @@ fun Feed(
     onShareClick: (FeedPost) -> Unit,
     onReportClick: (FeedPost) -> Unit,
     onStoryClick: (StoryItem) -> Unit = {},
+    onStoryTap: (StoryTapInfo) -> Unit = {},
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -89,6 +90,7 @@ fun Feed(
                         StoriesRow(
                             stories = mockStories,
                             onStoryClick = onStoryClick,
+                            onStoryTap = onStoryTap,
                             modifier = Modifier.padding(vertical = 12.dp)
                         )
                     }

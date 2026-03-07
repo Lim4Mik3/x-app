@@ -21,7 +21,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.android.R
 import com.example.app.android.network.models.FeedPost
+import com.example.app.android.network.models.formatCompactNumber
 import com.example.app.android.network.models.toHashtag
 import com.example.app.android.theme.AppTheme
 
@@ -56,7 +60,7 @@ fun FeedPostItem(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.surface)
+            .background(colors.background)
     ) {
         Column(
             modifier = Modifier
@@ -164,15 +168,7 @@ fun FeedPostItem(
                 Spacer(Modifier.height(10.dp))
             }
 
-            // Divider
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(0.5.dp)
-                    .background(colors.divider)
-            )
-
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(2.dp))
 
             // Interaction buttons (equal width)
             Row(
@@ -187,11 +183,20 @@ fun FeedPostItem(
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    InteractionLabel(
-                        icon = ImageVector.vectorResource(R.drawable.ic_signal),
-                        label = if (post.signalsCount > 0) "${post.signalsCount}" else "Sinal",
-                        tint = colors.textSecondary
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.ic_signal),
+                            contentDescription = "Sinal",
+                            modifier = Modifier.size(18.dp),
+                            tint = colors.textSecondary
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        if (post.signalsCount > 0) {
+                            RollingCounter(value = post.signalsCount, color = colors.textSecondary)
+                        } else {
+                            Text("Sinal", fontSize = 12.sp, color = colors.textSecondary, fontWeight = FontWeight.Medium)
+                        }
+                    }
                 }
                 Box(
                     Modifier
@@ -207,11 +212,20 @@ fun FeedPostItem(
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    InteractionLabel(
-                        icon = Icons.Outlined.ChatBubbleOutline,
-                        label = if (post.commentsCount > 0) "${post.commentsCount}" else "Comentar",
-                        tint = colors.textSecondary
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.ChatBubbleOutline,
+                            contentDescription = "Comentar",
+                            modifier = Modifier.size(18.dp),
+                            tint = colors.textSecondary
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        if (post.commentsCount > 0) {
+                            RollingCounter(value = post.commentsCount, color = colors.textSecondary)
+                        } else {
+                            Text("Comentar", fontSize = 12.sp, color = colors.textSecondary, fontWeight = FontWeight.Medium)
+                        }
+                    }
                 }
                 Box(
                     Modifier
@@ -236,13 +250,16 @@ fun FeedPostItem(
             }
         }
 
-        // Divider
+        Spacer(Modifier.height(2.dp))
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(6.dp)
-                .background(colors.divider.copy(alpha = 0.4f))
+                .height(0.5.dp)
+                .background(colors.divider)
         )
+
+        Spacer(Modifier.height(6.dp))
     }
 }
 
@@ -255,6 +272,25 @@ private fun parseColor(hex: String?): Color {
     } catch (_: Exception) {
         defaultTypeColor
     }
+}
+
+@Composable
+private fun RollingCounter(value: Int, color: Color) {
+    val animatable = remember { Animatable(value.toFloat()) }
+
+    LaunchedEffect(value) {
+        animatable.animateTo(
+            targetValue = value.toFloat(),
+            animationSpec = tween(durationMillis = 400)
+        )
+    }
+
+    Text(
+        text = formatCompactNumber(animatable.value.toInt()),
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        color = color
+    )
 }
 
 @Composable

@@ -20,6 +20,39 @@
     <string name="back">Back</string>
     <string name="skip_media">Skip</string>
 
+    <!-- Camera -->
+    <string name="camera_close">Close</string>
+    <string name="camera_hint">Tap for photo · Hold for video</string>
+    <string name="camera_permission_denied">Camera permission denied. Open settings to allow access.</string>
+    <string name="camera_permission_needed">The app needs camera and microphone access to capture photos and videos.</string>
+    <string name="open_settings">Open Settings</string>
+    <string name="allow_access">Allow Access</string>
+
+    <!-- Mood -->
+    <string name="mood_title">Mood</string>
+    <string name="mood_calm">Calm</string>
+    <string name="mood_updated">Updated 2min ago</string>
+    <string name="time_ago">2min ago</string>
+
+    <!-- Map -->
+    <string name="search_address">Search address…</string>
+    <string name="move_map_to_select">Move the map to select</string>
+    <string name="confirm_location">Confirm location</string>
+    <string name="location_precision_title">Where did it happen?</string>
+    <string name="location_precision_hint">Mark the exact location on the map.</string>
+
+    <!-- Review Post -->
+    <string name="review_title">Review post</string>
+    <string name="review_location_label">Location</string>
+    <string name="review_text_label">Content</string>
+    <string name="confirm_publish">Confirm and publish</string>
+    <string name="review_media_label">Media</string>
+    <string name="review_subtitle">Check the details before publishing</string>
+    <string name="no_media_attached">No media attached</string>
+
+    <!-- Stories -->
+    <string name="stories_in_city">In %s</string>
+
     <!-- Profile -->
     <string name="profile_section_personal">Personal Information</string>
     <string name="profile_email">Email</string>
@@ -37,4 +70,21 @@
     <string name="connected_connect">Connect</string>
     <string name="profile_change_photo">Change photo</string>
     <string name="profile_logout">Log out</string>
+
+    <!-- Signals -->
+    <string name="signal_title">Signal and react</string>
+    <string name="signal_subtitle">Contribute by signaling with what you know and react.</string>
+    <string name="signal_confirm">Confirm</string>
+    <string name="signal_section_verification">Verification</string>
+    <string name="signal_section_reaction">Reaction</string>
+    <string name="signal_unsupported">Signals not available for this post type.</string>
+    <string name="toast_signal_error">Failed to save signals. Please try again.</string>
+
+    <!-- Login -->
+    <string name="login_title">Welcome to Sinal</string>
+    <string name="login_subtitle">Find out what\'s happening near you</string>
+    <string name="login_header">To continue, sign in</string>
+    <string name="login_google">Continue with Google</string>
+    <string name="login_community">It\'ll be great to have you. Contribute with everyone!</string>
+    <string name="login_terms">By continuing, you agree to our Terms of Use and Privacy Policy</string>
 </resources>

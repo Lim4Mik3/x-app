@@ -75,20 +75,40 @@ struct FeedPostItem: View {
                 // Interaction buttons
                 HStack(spacing: 0) {
                     Button(action: onSignalClick) {
-                        InteractionLabel(icon: "antenna.radiowaves.left.and.right", label: post.signalsCount > 0 ? "\(post.signalsCount)" : "Sinal")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .contentShape(Rectangle())
+                        HStack(spacing: 4) {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                                .font(.system(size: 14))
+                            if post.signalsCount > 0 {
+                                RollingCounter(value: post.signalsCount)
+                            } else {
+                                Text("Sinal")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                        }
+                        .foregroundColor(colors.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     Rectangle()
                         .fill(colors.divider)
                         .frame(width: 0.5, height: 14)
                     Button(action: onCommentClick) {
-                        InteractionLabel(icon: "bubble.left", label: post.commentsCount > 0 ? "\(post.commentsCount)" : "Comentar")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .contentShape(Rectangle())
+                        HStack(spacing: 4) {
+                            Image(systemName: "bubble.left")
+                                .font(.system(size: 14))
+                            if post.commentsCount > 0 {
+                                RollingCounter(value: post.commentsCount)
+                            } else {
+                                Text("Comentar")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                        }
+                        .foregroundColor(colors.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     Rectangle()
@@ -132,6 +152,48 @@ func parseHexColor(_ hex: String?) -> Color {
     )
 }
 
+// MARK: - Rolling Counter
+
+struct RollingCounter: View {
+    let value: Int
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(characters.enumerated()), id: \.offset) { _, ch in
+                if let digit = ch.wholeNumberValue {
+                    SingleDigitRoller(digit: digit)
+                } else {
+                    Text(String(ch))
+                        .frame(height: 14)
+                }
+            }
+        }
+        .font(.system(size: 12, weight: .medium))
+    }
+
+    private var characters: [Character] {
+        Array(formatCompactNumber(value))
+    }
+}
+
+private struct SingleDigitRoller: View {
+    let digit: Int
+    private let digitHeight: CGFloat = 14
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(0..<10, id: \.self) { n in
+                Text("\(n)")
+                    .frame(width: 8, height: digitHeight)
+            }
+        }
+        .offset(y: -CGFloat(digit) * digitHeight)
+        .frame(width: 8, height: digitHeight, alignment: .top)
+        .clipped()
+        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: digit)
+    }
+}
+
 struct InteractionLabel: View {
     let icon: String
     let label: String
@@ -147,55 +209,4 @@ struct InteractionLabel: View {
         }
         .foregroundColor(colors.textSecondary)
     }
-}
-
-// MARK: - Preview
-
-#Preview("Feed Post") {
-    let mockPosts = [
-        ApiFeedPost(
-            id: "1",
-            content: "Acabou a luz aqui no bairro, alguem mais ta sem energia? Ja faz mais de 2 horas e nada da companhia resolver.",
-            type: "Alerta",
-            typeColor: "#FF6B35",
-            categories: ["Energia", "Infraestrutura"],
-            postedAt: "2026-03-06T14:30:00",
-            signalsCount: 12,
-            commentsCount: 5,
-            distance: "350m"
-        ),
-        ApiFeedPost(
-            id: "2",
-            content: "Feira livre amanha na praca central, quem quiser frutas frescas aparece cedo que vale a pena!",
-            type: "Evento",
-            typeColor: "#4CAF50",
-            categories: ["Comunidade"],
-            postedAt: "2026-03-06T10:00:00",
-            signalsCount: 3,
-            commentsCount: 0,
-            distance: "1.2km"
-        ),
-        ApiFeedPost(
-            id: "3",
-            content: "Cuidado com o buraco na rua das flores esquina com a av. brasil, quase perdi o pneu do carro ali.",
-            type: "Perigo",
-            typeColor: "#F44336",
-            categories: ["Transito", "Infraestrutura"],
-            postedAt: "2026-03-05T22:15:00",
-            signalsCount: 28,
-            commentsCount: 11,
-            distance: "800m"
-        ),
-    ]
-
-    ScrollView {
-        LazyVStack(spacing: 0) {
-            ForEach(mockPosts) { post in
-                FeedPostItem(post: post)
-            }
-        }
-    }
-    .background(Color.black)
-    .withAppTheme()
-    .preferredColorScheme(.dark)
 }

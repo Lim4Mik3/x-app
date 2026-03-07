@@ -143,10 +143,11 @@ struct ApiFeedPost: Identifiable {
     let id: String
     let content: String
     let type: String
+    let typeKey: String
     let typeColor: String?
     let categories: [String]
     let postedAt: String
-    let signalsCount: Int
+    var signalsCount: Int
     let commentsCount: Int
     let distance: String?
 
@@ -159,6 +160,7 @@ struct ApiFeedPost: Identifiable {
             id: id,
             content: dict["content"] as? String ?? "",
             type: dict["type"] as? String ?? "",
+            typeKey: dict["type_key"] as? String ?? "",
             typeColor: dict["type_color"] as? String,
             categories: cats,
             postedAt: dict["posted_at"] as? String ?? "",
@@ -207,7 +209,7 @@ struct SignalKey: Identifiable {
     let key: String
     let label: String
     let category: String
-    let polarity: String
+    let opposite: String?
     var id: String { key }
 
     static func from(_ dict: [String: Any]) -> SignalKey? {
@@ -216,19 +218,73 @@ struct SignalKey: Identifiable {
             key: key,
             label: dict["label"] as? String ?? key.replacingOccurrences(of: "_", with: " ").capitalized,
             category: dict["category"] as? String ?? "",
-            polarity: dict["polarity"] as? String ?? ""
+            opposite: dict["opposite"] as? String
         )
+    }
+}
+
+struct SignalPair: Identifiable {
+    let left: SignalKey
+    let right: SignalKey
+    var id: String { "\(left.key)-\(right.key)" }
+}
+
+struct SignalGroup: Identifiable {
+    let category: String
+    let label: String
+    let pairs: [SignalPair]
+    var id: String { category }
+
+    static func groupFromKeys(_ keys: [SignalKey]) -> [SignalGroup] {
+        let byCategory = Dictionary(grouping: keys, by: { $0.category })
+        let categoryOrder = ["verification", "reaction"]
+        let categoryLabels = ["verification": "Verificação", "reaction": "Reação"]
+
+        return categoryOrder.compactMap { cat in
+            guard let signals = byCategory[cat], !signals.isEmpty else { return nil }
+            var pairs: [SignalPair] = []
+            var used = Set<String>()
+            for signal in signals {
+                guard !used.contains(signal.key) else { continue }
+                if let oppKey = signal.opposite,
+                   let opp = signals.first(where: { $0.key == oppKey }) {
+                    pairs.append(SignalPair(left: signal, right: opp))
+                    used.insert(signal.key)
+                    used.insert(opp.key)
+                } else {
+                    pairs.append(SignalPair(left: signal, right: signal))
+                    used.insert(signal.key)
+                }
+            }
+            return SignalGroup(category: cat, label: categoryLabels[cat] ?? cat.capitalized, pairs: pairs)
+        }
     }
 }
 
 struct PostSignals {
     let signals: [String: Int]
-    let userSignals: [String]
+    let mySignals: [String]
 
     static func from(_ dict: [String: Any]) -> PostSignals {
         let signalsDict = dict["signals"] as? [String: Int] ?? [:]
-        let userArr = dict["user_signals"] as? [String] ?? []
-        return PostSignals(signals: signalsDict, userSignals: userArr)
+        let userArr = dict["my_signals"] as? [String] ?? dict["user_signals"] as? [String] ?? []
+        return PostSignals(signals: signalsDict, mySignals: userArr)
+    }
+}
+
+struct SyncSignalsResponse {
+    let added: [String]
+    let removed: [String]
+    let signals: [String: Int]
+    let mySignals: [String]
+
+    static func from(_ dict: [String: Any]) -> SyncSignalsResponse {
+        return SyncSignalsResponse(
+            added: dict["added"] as? [String] ?? [],
+            removed: dict["removed"] as? [String] ?? [],
+            signals: dict["signals"] as? [String: Int] ?? [:],
+            mySignals: dict["my_signals"] as? [String] ?? []
+        )
     }
 }
 
@@ -257,6 +313,27 @@ private let isoFormatter: DateFormatter = {
     f.locale = Locale(identifier: "en_US_POSIX")
     return f
 }()
+
+func formatCompactNumber(_ value: Int) -> String {
+    switch value {
+    case ..<1_000:
+        return "\(value)"
+    case ..<10_000:
+        let k = Double(value) / 1_000
+        return k.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(k))k"
+            : String(format: "%.1fk", k)
+    case ..<1_000_000:
+        return "\(value / 1_000)k"
+    case ..<10_000_000:
+        let m = Double(value) / 1_000_000
+        return m.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(m))M"
+            : String(format: "%.1fM", m)
+    default:
+        return "\(value / 1_000_000)M"
+    }
+}
 
 func toHashtag(_ text: String) -> String {
     let camel = text.split(separator: " ").map { word in

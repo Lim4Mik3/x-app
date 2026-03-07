@@ -3,7 +3,16 @@ package com.example.app.android.screens
 import android.Manifest
 import android.location.Geocoder
 import android.location.Location
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -28,25 +37,29 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.app.android.components.BottomTabBar
-import com.example.app.android.components.CommentSheet
 import com.example.app.android.components.CreatePostFab
 import com.example.app.android.components.Feed
 import com.example.app.android.components.Header
 import com.example.app.android.components.ReportSheet
 import com.example.app.android.components.SignalSheet
 import com.example.app.android.components.Tab
+import com.example.app.android.components.ToastOverlay
 import com.example.app.android.components.rememberScrollAwareState
+import com.example.app.android.network.SignalKeysCache
 import com.example.app.android.navigation.OverlayRoute
 import com.example.app.android.navigation.navigateOnce
 import com.example.app.android.network.ApiClient
@@ -56,6 +69,7 @@ import com.example.app.android.services.LocationService
 import com.example.app.android.theme.AppTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -71,6 +85,9 @@ fun MainScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val screenWidth = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val screenHeight = with(density) { configuration.screenHeightDp.dp.toPx() }
 
     // Navigation
     var selectedTab by remember { mutableStateOf(Tab.Home) }
@@ -90,32 +107,39 @@ fun MainScreen(
     var feedCursor by remember { mutableStateOf<String?>(null) }
     var hasMore by remember { mutableStateOf(true) }
 
+    val effectiveLoggedIn = isLoggedIn || com.example.app.android.DevConfig.BYPASS_AUTH
+
     // Login overlay
     var showLoginOverlay by remember { mutableStateOf(false) }
 
     fun requireAuth(action: () -> Unit) {
-        if (isLoggedIn) action() else showLoginOverlay = true
+        if (isLoggedIn || com.example.app.android.DevConfig.BYPASS_AUTH) action() else showLoginOverlay = true
     }
 
     // Interaction sheets
-    var showCommentForPost by remember { mutableStateOf<FeedPost?>(null) }
     var showSignalForPost by remember { mutableStateOf<FeedPost?>(null) }
     var showReportForPost by remember { mutableStateOf<FeedPost?>(null) }
     var showStoryViewer by remember { mutableStateOf<com.example.app.android.components.StoryItem?>(null) }
+    var storyTransition by remember { mutableStateOf<com.example.app.android.components.StoryTapInfo?>(null) }
+    var storyTransitionExpanded by remember { mutableStateOf(false) }
 
     // Location permissions
     val locationPermissions = rememberMultiplePermissionsState(
         listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
     )
 
-    // Request permissions on launch
+    // Initialize cache and request permissions on launch
     LaunchedEffect(Unit) {
+        SignalKeysCache.init(context)
+        SignalKeysCache.refresh()
+        // Fetch mock location immediately (no permission needed)
+        locationService.fetch(forceRefresh = true)
         if (!locationPermissions.allPermissionsGranted) {
             locationPermissions.launchMultiplePermissionRequest()
         }
     }
 
-    // Fetch location when permissions granted
+    // Fetch location when permissions granted (for real GPS)
     LaunchedEffect(locationPermissions.allPermissionsGranted) {
         if (locationPermissions.allPermissionsGranted) {
             locationService.fetch(forceRefresh = true)
@@ -175,7 +199,13 @@ fun MainScreen(
         scrollAwareState.reset()
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
+    val contentBlur by animateDpAsState(
+        targetValue = if (showLoginOverlay) 240.dp else 0.dp,
+        animationSpec = tween(300),
+        label = "contentBlur"
+    )
+    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(colors.background).blur(contentBlur)) {
         // Header
         if (selectedTab == Tab.Home) {
             Box(
@@ -198,6 +228,21 @@ fun MainScreen(
             )
         }
 
+        // Top gradient (visible when header is hidden)
+        if (selectedTab == Tab.Home && scrollAwareState.topBarOffsetPx < 0) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .zIndex(1.5f)
+                    .height(60.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(colors.background, colors.background.copy(alpha = 0f))
+                        )
+                    )
+            )
+        }
+
         // Content
         when (selectedTab) {
             Tab.Home -> Feed(
@@ -206,10 +251,14 @@ fun MainScreen(
                 isLoading = isFeedLoading,
                 isRefreshing = isRefreshing,
                 onSignalClick = { post -> requireAuth { showSignalForPost = post } },
-                onCommentClick = { post -> requireAuth { showCommentForPost = post } },
+                onCommentClick = { },
                 onShareClick = { /* TODO: share intent */ },
                 onReportClick = { post -> requireAuth { showReportForPost = post } },
-                onStoryClick = { story -> showStoryViewer = story },
+                onStoryClick = { },
+                onStoryTap = { tapInfo ->
+                    storyTransition = tapInfo
+                    storyTransitionExpanded = true
+                },
                 onLoadMore = {
                     if (hasMore && !isFeedLoading && feedCursor != null) {
                         loadFeed()
@@ -225,7 +274,7 @@ fun MainScreen(
                 )
             )
             Tab.MyPosts -> {
-                if (isLoggedIn) {
+                if (effectiveLoggedIn) {
                     MyPostsScreen(
                         modifier = Modifier
                             .fillMaxSize()
@@ -239,7 +288,7 @@ fun MainScreen(
                 }
             }
             Tab.Profile -> {
-                if (isLoggedIn) {
+                if (effectiveLoggedIn) {
                     ProfileScreen(
                         modifier = Modifier
                             .fillMaxSize()
@@ -272,16 +321,34 @@ fun MainScreen(
             )
         }
 
-        // Bottom bar
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .zIndex(2f)
-                .offset { IntOffset(0, -scrollAwareState.bottomBarOffsetPx.roundToInt()) }
-                .onGloballyPositioned { scrollAwareState.bottomBarHeightPx = it.size.height.toFloat() }
-                .background(colors.surface)
-        ) {
-            BottomTabBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+        // Bottom gradient (visible when bottom bar is hidden or not logged in)
+        if (selectedTab == Tab.Home && (!effectiveLoggedIn || scrollAwareState.bottomBarOffsetPx < 0)) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .zIndex(1.5f)
+                    .height(60.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(colors.background.copy(alpha = 0f), colors.background)
+                        )
+                    )
+            )
+        }
+
+        // Bottom bar (only when logged in)
+        if (effectiveLoggedIn) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .zIndex(2f)
+                    .offset { IntOffset(0, -scrollAwareState.bottomBarOffsetPx.roundToInt()) }
+                    .onGloballyPositioned { scrollAwareState.bottomBarHeightPx = it.size.height.toFloat() }
+                    .background(colors.surface)
+            ) {
+                BottomTabBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+            }
         }
 
         // Overlay navigation (only CreatePost now)
@@ -306,18 +373,16 @@ fun MainScreen(
             }
         }
 
-        // Interaction sheets
-        if (showCommentForPost != null) {
-            CommentSheet(
-                postId = showCommentForPost!!.id,
-                onDismiss = { showCommentForPost = null }
-            )
-        }
-
         if (showSignalForPost != null) {
             SignalSheet(
                 postId = showSignalForPost!!.id,
-                postType = showSignalForPost!!.type,
+                typeKey = showSignalForPost!!.typeKey,
+                onSignalsUpdated = { newCount ->
+                    val idx = feedPosts.indexOfFirst { it.id == showSignalForPost!!.id }
+                    if (idx >= 0) {
+                        feedPosts = feedPosts.toMutableList().also { it[idx] = it[idx].copy(signalsCount = newCount) }
+                    }
+                },
                 onDismiss = { showSignalForPost = null }
             )
         }
@@ -327,6 +392,37 @@ fun MainScreen(
                 postId = showReportForPost!!.id,
                 onDismiss = { showReportForPost = null }
             )
+        }
+
+        // Story expand circle transition
+        storyTransition?.let { tap ->
+            val expandProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+
+            LaunchedEffect(tap) {
+                expandProgress.snapTo(0f)
+                expandProgress.animateTo(1f, tween(180))
+                showStoryViewer = tap.story
+                delay(50)
+                storyTransition = null
+                storyTransitionExpanded = false
+            }
+
+            val maxDx = maxOf(tap.centerX, screenWidth - tap.centerX)
+            val maxDy = maxOf(tap.centerY, screenHeight - tap.centerY)
+            val expandedSize = kotlin.math.sqrt(maxDx * maxDx + maxDy * maxDy) * 2f
+            val currentSize = tap.size + (expandedSize - tap.size) * expandProgress.value
+
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(14f)
+            ) {
+                drawCircle(
+                    color = Color(0xFF1A1A2E),
+                    radius = currentSize / 2f,
+                    center = Offset(tap.centerX, tap.centerY)
+                )
+            }
         }
 
         // Story viewer
@@ -344,19 +440,28 @@ fun MainScreen(
             }
         }
 
-        // Login overlay (triggered by interactions when not logged in)
-        if (showLoginOverlay) {
-            Box(modifier = Modifier.fillMaxSize().zIndex(20f)) {
-                LoginScreen(
-                    onLoginSuccess = {
-                        onLoginSuccess()
-                        showLoginOverlay = false
-                    },
-                    onDismiss = { showLoginOverlay = false }
-                )
-            }
+        // Toast overlay
+        Box(modifier = Modifier.fillMaxSize().zIndex(25f)) {
+            ToastOverlay()
         }
-    }
+    } // end blurred content Box
+
+        // Login overlay (triggered by interactions when not logged in) — outside blur
+        AnimatedVisibility(
+            visible = showLoginOverlay,
+            enter = fadeIn(animationSpec = tween(300)),
+            exit = fadeOut(animationSpec = tween(300)),
+            modifier = Modifier.fillMaxSize().zIndex(20f)
+        ) {
+            LoginScreen(
+                onLoginSuccess = {
+                    onLoginSuccess()
+                    showLoginOverlay = false
+                },
+                onDismiss = { showLoginOverlay = false }
+            )
+        }
+    } // end root Box
 }
 
 private fun mockStoryContents(label: String) = listOf(

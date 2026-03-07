@@ -86,3 +86,14 @@
 "login_google" = "Continue with Google";
 "login_community" = "It'll be great to have you. Contribute with everyone!";
 "login_terms" = "By continuing, you agree to our Terms of Use and Privacy Policy";
+
+/* Signals */
+"signal_title" = "Signal and react";
+"signal_subtitle" = "Contribute by signaling with what you know and react.";
+"signal_confirm" = "Confirm";
+"signal_section_verification" = "Verification";
+"signal_section_reaction" = "Reaction";
+
+/* Toast */
+"toast_signal_error" = "Failed to save signals. Please try again.";
+"signal_unsupported" = "Signals not available for this post type.";

@@ -20,6 +20,39 @@
     <string name="back">Voltar</string>
     <string name="skip_media">Pular</string>
 
+    <!-- Camera -->
+    <string name="camera_close">Fechar</string>
+    <string name="camera_hint">Toque para foto · Segure para vídeo</string>
+    <string name="camera_permission_denied">Permissão de câmera negada. Abra as configurações para permitir o acesso.</string>
+    <string name="camera_permission_needed">O app precisa de acesso à câmera e microfone para capturar fotos e vídeos.</string>
+    <string name="open_settings">Abrir Configurações</string>
+    <string name="allow_access">Permitir Acesso</string>
+
+    <!-- Mood -->
+    <string name="mood_title">Humor</string>
+    <string name="mood_calm">Tranquilo</string>
+    <string name="mood_updated">Atualizado 2min atrás</string>
+    <string name="time_ago">2min atrás</string>
+
+    <!-- Map -->
+    <string name="search_address">Buscar endereço…</string>
+    <string name="move_map_to_select">Mova o mapa para selecionar</string>
+    <string name="confirm_location">Confirmar localização</string>
+    <string name="location_precision_title">Onde aconteceu?</string>
+    <string name="location_precision_hint">Marque no mapa o local exato do ocorrido.</string>
+
+    <!-- Review Post -->
+    <string name="review_title">Revisar publicação</string>
+    <string name="review_location_label">Localização</string>
+    <string name="review_text_label">Conteúdo</string>
+    <string name="confirm_publish">Confirmar e publicar</string>
+    <string name="review_media_label">Mídia</string>
+    <string name="review_subtitle">Confira os detalhes antes de publicar</string>
+    <string name="no_media_attached">Nenhuma mídia anexada</string>
+
+    <!-- Stories -->
+    <string name="stories_in_city">Em %s</string>
+
     <!-- Profile -->
     <string name="profile_section_personal">Informações Pessoais</string>
     <string name="profile_email">E-mail</string>
@@ -37,4 +70,21 @@
     <string name="connected_connect">Conectar</string>
     <string name="profile_change_photo">Alterar foto</string>
     <string name="profile_logout">Sair da conta</string>
+
+    <!-- Signals -->
+    <string name="signal_title">Sinalize e reaja</string>
+    <string name="signal_subtitle">Contribua sinalizando com o que você sabe e reaja.</string>
+    <string name="signal_confirm">Confirmar</string>
+    <string name="signal_section_verification">Verificação</string>
+    <string name="signal_section_reaction">Reação</string>
+    <string name="signal_unsupported">Sinais não disponíveis para este tipo de publicação.</string>
+    <string name="toast_signal_error">Erro ao salvar sinais. Tente novamente.</string>
+
+    <!-- Login -->
+    <string name="login_title">Bem-vindo ao Sinal</string>
+    <string name="login_subtitle">Saiba o que acontece perto de voc\u00ea</string>
+    <string name="login_header">Para continuar, entre</string>
+    <string name="login_google">Continuar com Google</string>
+    <string name="login_community">Ser\u00e1 bom ter voc\u00ea. Contribua com todos!</string>
+    <string name="login_terms">Ao continuar, voc\u00ea concorda com nossos Termos de Uso e Pol\u00edtica de Privacidade</string>
 </resources>

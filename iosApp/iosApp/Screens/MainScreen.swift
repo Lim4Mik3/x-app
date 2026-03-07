@@ -22,7 +22,6 @@ struct MainScreen: View {
     @State private var cityName = ""
 
     // Interaction sheets
-    @State private var showCommentForPost: ApiFeedPost?
     @State private var showSignalForPost: ApiFeedPost?
     @State private var showReportForPost: ApiFeedPost?
     @State private var showStoryViewer: StoryItem?
@@ -47,7 +46,7 @@ struct MainScreen: View {
                             topInset: scrollState.headerHeight,
                             bottomInset: isLoggedIn ? scrollState.bottomBarHeight : 0,
                             onSignalClick: { post in requireAuth { showSignalForPost = post } },
-                            onCommentClick: { post in requireAuth { showCommentForPost = post } },
+                            onCommentClick: { _ in },
                             onShareClick: { _ in },
                             onReportClick: { post in requireAuth { showReportForPost = post } },
                             onStoryTap: { tapInfo in
@@ -264,13 +263,19 @@ struct MainScreen: View {
                 }
                 reverseGeocode(loc)
             }
-            .sheet(item: $showCommentForPost) { post in
-                CommentSheet(postId: post.id, onDismiss: { showCommentForPost = nil })
-                    .presentationDetents([.large])
-            }
-            .sheet(item: $showSignalForPost) { post in
-                SignalSheet(postId: post.id, postType: post.type, onDismiss: { showSignalForPost = nil })
-                    .presentationDetents([.medium])
+            .overlay {
+                if let post = showSignalForPost {
+                    SignalPopup(
+                        postId: post.id,
+                        typeKey: post.typeKey,
+                        onSignalsUpdated: { newCount in
+                            if let idx = feedPosts.firstIndex(where: { $0.id == post.id }) {
+                                feedPosts[idx].signalsCount = newCount
+                            }
+                        },
+                        onDismiss: { showSignalForPost = nil }
+                    )
+                }
             }
             .sheet(item: $showReportForPost) { post in
                 ReportSheet(postId: post.id, onDismiss: { showReportForPost = nil })

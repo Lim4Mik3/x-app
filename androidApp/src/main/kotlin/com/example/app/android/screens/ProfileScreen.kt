@@ -23,16 +23,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,7 +53,9 @@ import com.example.app.android.components.profile.ProfileDivider
 import com.example.app.android.components.profile.ProfileHeader
 import com.example.app.android.components.profile.ProfileInfoRow
 import com.example.app.android.components.profile.ProfileSection
-import com.example.app.android.model.UserProfile
+import com.example.app.android.network.ApiClient
+import com.example.app.android.network.SignalKeysCache
+import com.example.app.android.network.models.User
 import com.example.app.android.theme.AppTheme
 
 private data class LanguageOption(
@@ -74,23 +77,17 @@ fun ProfileScreen(
     val colors = AppTheme.colors
     val scrollState = rememberScrollState()
 
-    val user = remember {
-        UserProfile(
-            name = "Leonardo Oliveira",
-            email = "leo.oliveira@email.com",
-            phone = "+55 11 99876-5432",
-            address = "Rua das Flores, 123",
-            location = "Osasco, SP",
-            initials = "LO",
-            preferences = emptyList()
-        )
+    var user by remember { mutableStateOf<User?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        isLoading = true
+        ApiClient.getMe().onSuccess { user = it }
+        isLoading = false
     }
 
     var notificationsEnabled by remember { mutableStateOf(true) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
-    var googleConnected by remember { mutableStateOf(true) }
-    var appleConnected by remember { mutableStateOf(false) }
-    var facebookConnected by remember { mutableStateOf(false) }
 
     // Photo picker
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -108,6 +105,18 @@ fun ProfileScreen(
     }
     var languageMenuExpanded by remember { mutableStateOf(false) }
 
+    if (isLoading) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = colors.accent, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+        }
+        return
+    }
+
+    val displayName = user?.name ?: user?.displayName ?: ""
+    val email = user?.email ?: ""
+    val phone = user?.phone ?: ""
+    val initials = user?.initials ?: ""
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -119,9 +128,9 @@ fun ProfileScreen(
 
         // --- Profile Header ---
         ProfileHeader(
-            name = user.name,
-            email = user.email,
-            initials = user.initials,
+            name = displayName,
+            email = email,
+            initials = initials,
             photoUri = photoUri,
             onAvatarClick = { photoPickerLauncher.launch("image/*") }
         )
@@ -133,34 +142,35 @@ fun ProfileScreen(
             ProfileInfoRow(
                 icon = Icons.Outlined.Email,
                 label = stringResource(R.string.profile_email),
-                value = user.email
+                value = email
             )
             ProfileDivider()
             ProfileInfoRow(
                 icon = Icons.Outlined.Phone,
                 label = stringResource(R.string.profile_phone),
-                value = user.phone
+                value = phone
             )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         // --- Location Section ---
-        ProfileSection(title = stringResource(R.string.profile_section_location)) {
-            ProfileInfoRow(
-                icon = Icons.Outlined.Home,
-                label = stringResource(R.string.profile_address),
-                value = user.address
-            )
-            ProfileDivider()
-            ProfileInfoRow(
-                icon = Icons.Outlined.LocationOn,
-                label = stringResource(R.string.profile_location),
-                value = user.location
-            )
-        }
+        if (user != null && user!!.addresses.isNotEmpty()) {
+            ProfileSection(title = stringResource(R.string.profile_section_location)) {
+                user!!.addresses.forEachIndexed { index, addr ->
+                    if (index > 0) {
+                        ProfileDivider()
+                    }
+                    ProfileInfoRow(
+                        icon = if (addr.isPrimary) Icons.Outlined.Home else Icons.Outlined.Work,
+                        label = addr.label,
+                        value = "${addr.formatted} · ${addr.location}"
+                    )
+                }
+            }
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
         // --- Preferences Section ---
         ProfileSection(title = stringResource(R.string.profile_section_preferences)) {
@@ -215,6 +225,7 @@ fun ProfileScreen(
                             onClick = {
                                 selectedTag = lang.tag
                                 languageMenuExpanded = false
+                                SignalKeysCache.invalidate()
                                 val localeList = LocaleListCompat.forLanguageTags(lang.tag)
                                 AppCompatDelegate.setApplicationLocales(localeList)
                             }
@@ -231,28 +242,19 @@ fun ProfileScreen(
             ConnectedAccountRow(
                 icon = Icons.Outlined.Email,
                 name = stringResource(R.string.connected_google),
-                connected = googleConnected,
+                connected = user?.isProviderConnected("google") ?: false,
                 statusLabel = stringResource(R.string.connected_status),
                 connectLabel = stringResource(R.string.connected_connect),
-                onToggle = { googleConnected = !googleConnected }
+                onToggle = {}
             )
             ProfileDivider()
             ConnectedAccountRow(
                 icon = Icons.Outlined.Phone,
                 name = stringResource(R.string.connected_apple),
-                connected = appleConnected,
+                connected = user?.isProviderConnected("apple") ?: false,
                 statusLabel = stringResource(R.string.connected_status),
                 connectLabel = stringResource(R.string.connected_connect),
-                onToggle = { appleConnected = !appleConnected }
-            )
-            ProfileDivider()
-            ConnectedAccountRow(
-                icon = Icons.Outlined.Person,
-                name = stringResource(R.string.connected_facebook),
-                connected = facebookConnected,
-                statusLabel = stringResource(R.string.connected_status),
-                connectLabel = stringResource(R.string.connected_connect),
-                onToggle = { facebookConnected = !facebookConnected }
+                onToggle = {}
             )
         }
 

@@ -78,6 +78,11 @@ object ApiClient {
         JSONObject().put("post", text).put("lat", lat).put("lng", lng)
     ) { CreatedPost.fromJson(it) }
 
+    suspend fun getMyPosts(): Result<List<FeedPost>> = get("/posts/me") { json ->
+        val arr = json.optJSONArray("posts") ?: JSONArray()
+        (0 until arr.length()).map { FeedPost.fromJson(arr.getJSONObject(it)) }
+    }
+
     // ── Comments ──
 
     suspend fun getComments(postId: String): Result<List<Comment>> = get(
@@ -111,6 +116,18 @@ object ApiClient {
 
     // ── Signals ──
 
+    suspend fun getAllSignalKeys(): Result<Map<String, List<SignalKey>>> {
+        val lang = java.util.Locale.getDefault().toLanguageTag()
+        return request("GET", "/signal/keys/all", null, { json ->
+            val result = mutableMapOf<String, List<SignalKey>>()
+            json.keys().forEach { typeKey ->
+                val arr = json.optJSONArray(typeKey) ?: return@forEach
+                result[typeKey] = (0 until arr.length()).map { SignalKey.fromJson(arr.getJSONObject(it)) }
+            }
+            result
+        }, extraHeaders = mapOf("Accept-Language" to lang))
+    }
+
     suspend fun getSignalKeys(type: String? = null): Result<List<SignalKey>> {
         val params = if (type != null) "?type=$type" else ""
         return get("/signal/keys$params") { json ->
@@ -123,14 +140,10 @@ object ApiClient {
         "/post/$postId/signals"
     ) { PostSignals.fromJson(it) }
 
-    suspend fun addSignal(postId: String, signalKey: String): Result<Unit> = post(
-        "/post/$postId/signal",
-        JSONObject().put("signal_key", signalKey)
-    ) { }
-
-    suspend fun removeSignal(postId: String, signalKey: String): Result<Unit> {
-        val body = JSONObject().put("signal_key", signalKey)
-        return request("DELETE", "/post/$postId/signal", body) { }
+    suspend fun syncSignals(postId: String, signalKeys: List<String>): Result<SyncSignalsResponse> {
+        val body = JSONObject()
+        body.put("signal_keys", JSONArray(signalKeys))
+        return put("/post/$postId/signals", body) { SyncSignalsResponse.fromJson(it) }
     }
 
     // ── Reports ──
@@ -172,13 +185,14 @@ object ApiClient {
     ): Result<T> = request("PUT", path, body, parse)
 
     private suspend fun delete(path: String): Result<Unit> =
-        request("DELETE", path, null) { }
+        request("DELETE", path, null, { })
 
     private suspend fun <T> request(
         method: String,
         path: String,
         body: JSONObject?,
-        parse: (JSONObject) -> T
+        parse: (JSONObject) -> T,
+        extraHeaders: Map<String, String>? = null
     ): Result<T> = withContext(Dispatchers.IO) {
         try {
             val url = "$BASE_URL$path"
@@ -191,6 +205,7 @@ object ApiClient {
                     "PUT" -> put(requestBody ?: "".toRequestBody(JSON_MEDIA))
                     "DELETE" -> if (requestBody != null) delete(requestBody) else delete()
                 }
+                extraHeaders?.forEach { (key, value) -> header(key, value) }
             }.build()
 
             val response = client.newCall(request).execute()
@@ -236,6 +251,13 @@ private class AuthInterceptor : Interceptor {
 
         TokenManager.accessToken?.let {
             builder.header("Authorization", "Bearer $it")
+        }
+
+        if (com.example.app.android.DevConfig.BYPASS_API_AUTH) {
+            builder.header(
+                com.example.app.android.DevConfig.DEV_BYPASS_HEADER,
+                com.example.app.android.DevConfig.DEV_BYPASS_VALUE
+            )
         }
 
         return chain.proceed(builder.build())

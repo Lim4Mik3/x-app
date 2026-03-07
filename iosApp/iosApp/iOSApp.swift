@@ -13,6 +13,9 @@ struct iOSApp: App {
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)
                 }
+                .task {
+                    await SignalKeysCache.shared.refresh()
+                }
         }
     }
 }

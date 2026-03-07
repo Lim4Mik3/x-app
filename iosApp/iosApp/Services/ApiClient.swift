@@ -108,17 +108,27 @@ final class ApiClient {
         return arr.compactMap { SignalKey.from($0) }
     }
 
+    func getAllSignalKeys() async throws -> [String: [SignalKey]] {
+        let lang = LanguageManager.shared.currentLanguage
+        let data = try await request(method: "GET", path: "/signal/keys/all", body: nil, auth: false, extraHeaders: ["Accept-Language": lang])
+        var result: [String: [SignalKey]] = [:]
+        for (typeKey, value) in data {
+            if let arr = value as? [[String: Any]] {
+                result[typeKey] = arr.compactMap { SignalKey.from($0) }
+            }
+        }
+        return result
+    }
+
     func getPostSignals(postId: String) async throws -> PostSignals {
         let data = try await get(path: "/post/\(postId)/signals")
         return PostSignals.from(data)
     }
 
-    func addSignal(postId: String, signalKey: String) async throws {
-        _ = try await post(path: "/post/\(postId)/signal", body: ["signal_key": signalKey])
-    }
-
-    func removeSignal(postId: String, signalKey: String) async throws {
-        _ = try await request(method: "DELETE", path: "/post/\(postId)/signal", body: ["signal_key": signalKey])
+    func syncSignals(postId: String, signalKeys: [String]) async throws -> SyncSignalsResponse {
+        let body: [String: Any] = ["signal_keys": signalKeys]
+        let data = try await request(method: "PUT", path: "/post/\(postId)/signals", body: body)
+        return SyncSignalsResponse.from(data)
     }
 
     // MARK: - Reports
@@ -145,7 +155,7 @@ final class ApiClient {
         return try await request(method: "POST", path: path, body: body, auth: auth)
     }
 
-    private func request(method: String, path: String, body: [String: Any]?, auth: Bool = true) async throws -> [String: Any] {
+    private func request(method: String, path: String, body: [String: Any]?, auth: Bool = true, extraHeaders: [String: String]? = nil) async throws -> [String: Any] {
         guard let url = URL(string: "\(API_BASE_URL)\(path)") else {
             throw ApiError.decode("Invalid URL")
         }
@@ -159,6 +169,7 @@ final class ApiClient {
         #if DEBUG
         req.setValue("dev-user-001", forHTTPHeaderField: "X-Dev-User-ID")
         #endif
+        extraHeaders?.forEach { req.setValue($0.value, forHTTPHeaderField: $0.key) }
 
         if let body = body, method != "GET" {
             req.httpBody = try JSONSerialization.data(withJSONObject: body)

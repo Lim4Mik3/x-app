@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.border
+import com.example.app.android.theme.AppTheme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -81,7 +82,7 @@ fun StoryViewer(
     val colors = AppTheme.colors
     var currentStoryIndex by remember { mutableIntStateOf(initialStoryIndex) }
     var currentContentIndex by remember { mutableIntStateOf(0) }
-    val progress = remember { Animatable(0f) }
+    val progress = remember(currentStoryIndex, currentContentIndex) { Animatable(0f) }
     val dragOffset = remember { Animatable(0f) }
     val verticalDragOffset = remember { Animatable(0f) }
     val infoPanelOffset = remember { Animatable(0f) }
@@ -116,7 +117,6 @@ fun StoryViewer(
         if (isDragging || isInfoPanelOpen) return@LaunchedEffect
         dragOffset.snapTo(0f)
         val duration = contents.getOrNull(currentContentIndex)?.displayDurationMs ?: 8000L
-        progress.snapTo(0f)
         progress.animateTo(1f, tween(duration.toInt(), easing = LinearEasing))
         // Auto-advance
         if (currentContentIndex < contents.lastIndex) {
@@ -448,6 +448,7 @@ private fun StoryPage(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             // Progress bars

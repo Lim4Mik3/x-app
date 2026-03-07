@@ -86,3 +86,14 @@
 "login_google" = "Continuar con Google";
 "login_community" = "Será genial tenerte. ¡Contribuye con todos!";
 "login_terms" = "Al continuar, aceptas nuestros Términos de Uso y Política de Privacidad";
+
+/* Signals */
+"signal_title" = "Señala y reacciona";
+"signal_subtitle" = "Contribuye señalando con lo que sabes y reacciona.";
+"signal_confirm" = "Confirmar";
+"signal_section_verification" = "Verificación";
+"signal_section_reaction" = "Reacción";
+
+/* Toast */
+"toast_signal_error" = "Error al guardar señales. Inténtalo de nuevo.";
+"signal_unsupported" = "Señales no disponibles para este tipo de publicación.";

@@ -13,6 +13,11 @@ import kotlin.math.roundToInt
 
 class LocationService private constructor(context: Context) {
 
+    // TODO: Set to false to use real GPS location
+    private val useMockLocation = true
+    private val mockLat = -23.572218
+    private val mockLng = -46.800470
+
     private val fusedClient = LocationServices.getFusedLocationProviderClient(context)
     private val _location = MutableStateFlow<Location?>(null)
     val location: StateFlow<Location?> = _location.asStateFlow()
@@ -33,12 +38,20 @@ class LocationService private constructor(context: Context) {
     fun fetch(forceRefresh: Boolean = false) {
         if (!forceRefresh && isCacheValid) return
 
+        if (useMockLocation) {
+            _location.value = Location("mock").apply {
+                latitude = mockLat
+                longitude = mockLng
+            }
+            lastFetchTime = System.currentTimeMillis()
+            return
+        }
+
         fusedClient.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
                 _location.value = location
                 lastFetchTime = System.currentTimeMillis()
             } else {
-                // lastLocation can be null if no recent location — request a fresh one
                 requestFresh()
             }
         }

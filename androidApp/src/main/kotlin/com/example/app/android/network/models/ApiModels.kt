@@ -38,25 +38,96 @@ data class TokenPair(
 
 data class User(
     val id: String,
+    val name: String?,
     val displayName: String?,
     val email: String?,
     val phone: String?,
     val avatarUrl: String?,
     val addressCity: String?,
     val addressState: String?,
-    val preferredLocale: String?
+    val preferredLocale: String?,
+    val addresses: List<UserAddress>,
+    val accounts: List<UserAccount>
+) {
+    val initials: String get() {
+        val parts = (name ?: displayName ?: "").split(" ")
+        return if (parts.size >= 2) "${parts[0].take(1)}${parts[1].take(1)}".uppercase()
+        else (name ?: displayName ?: "?").take(2).uppercase()
+    }
+
+    fun isProviderConnected(provider: String): Boolean =
+        accounts.any { it.provider == provider }
+
+    companion object {
+        fun fromJson(json: JSONObject): User {
+            val addrsArr = json.optJSONArray("addresses") ?: JSONArray()
+            val addrs = (0 until addrsArr.length()).mapNotNull {
+                UserAddress.fromJson(addrsArr.getJSONObject(it))
+            }
+            val accsArr = json.optJSONArray("accounts") ?: JSONArray()
+            val accs = (0 until accsArr.length()).mapNotNull {
+                UserAccount.fromJson(accsArr.getJSONObject(it))
+            }
+            return User(
+                id = json.getString("id"),
+                name = json.optString("name", null),
+                displayName = json.optString("display_name", null) ?: json.optString("name", null),
+                email = json.optString("email", null),
+                phone = json.optString("phone", null),
+                avatarUrl = json.optString("avatar_url", null),
+                addressCity = json.optString("address_city", null),
+                addressState = json.optString("address_state", null),
+                preferredLocale = json.optString("preferred_locale", null),
+                addresses = addrs,
+                accounts = accs
+            )
+        }
+    }
+}
+
+data class UserAddress(
+    val label: String,
+    val street: String,
+    val number: String,
+    val complement: String?,
+    val neighborhood: String,
+    val city: String,
+    val state: String,
+    val country: String,
+    val zipCode: String,
+    val isPrimary: Boolean
+) {
+    val formatted: String get() = "$street, $number"
+    val location: String get() = "$city, $state"
+
+    companion object {
+        fun fromJson(json: JSONObject) = UserAddress(
+            label = json.optString("label", ""),
+            street = json.optString("street", ""),
+            number = json.optString("number", ""),
+            complement = json.optString("complement", null),
+            neighborhood = json.optString("neighborhood", ""),
+            city = json.optString("city", ""),
+            state = json.optString("state", ""),
+            country = json.optString("country", ""),
+            zipCode = json.optString("zip_code", ""),
+            isPrimary = json.optBoolean("is_primary", false)
+        )
+    }
+}
+
+data class UserAccount(
+    val provider: String,
+    val connectedAt: String
 ) {
     companion object {
-        fun fromJson(json: JSONObject) = User(
-            id = json.getString("id"),
-            displayName = json.optString("display_name", null),
-            email = json.optString("email", null),
-            phone = json.optString("phone", null),
-            avatarUrl = json.optString("avatar_url", null),
-            addressCity = json.optString("address_city", null),
-            addressState = json.optString("address_state", null),
-            preferredLocale = json.optString("preferred_locale", null)
-        )
+        fun fromJson(json: JSONObject): UserAccount? {
+            val provider = json.optString("provider", null) ?: return null
+            return UserAccount(
+                provider = provider,
+                connectedAt = json.optString("connected_at", "")
+            )
+        }
     }
 }
 
@@ -88,10 +159,11 @@ data class FeedPost(
     val id: String,
     val content: String,
     val type: String,
+    val typeKey: String,
     val typeColor: String?,
     val categories: List<String>,
     val postedAt: String,
-    val signalsCount: Int,
+    var signalsCount: Int,
     val commentsCount: Int,
     val distance: String?
 ) {
@@ -104,6 +176,7 @@ data class FeedPost(
                 id = json.getString("id"),
                 content = json.optString("content", ""),
                 type = json.optString("type", ""),
+                typeKey = json.optString("type_key", ""),
                 typeColor = json.optString("type_color", null),
                 categories = (0 until cats.length()).map { cats.getString(it) },
                 postedAt = json.optString("posted_at", ""),
@@ -205,30 +278,93 @@ data class SignalKey(
     val key: String,
     val label: String,
     val category: String,
-    val polarity: String
+    val opposite: String?
 ) {
     companion object {
         fun fromJson(json: JSONObject) = SignalKey(
             key = json.getString("key"),
             label = json.optString("label", ""),
             category = json.optString("category", ""),
-            polarity = json.optString("polarity", "")
+            opposite = json.optString("opposite", null)
         )
+    }
+}
+
+data class SignalPair(
+    val left: SignalKey,
+    val right: SignalKey
+)
+
+data class SignalGroup(
+    val category: String,
+    val label: String,
+    val pairs: List<SignalPair>
+) {
+    companion object {
+        fun groupFromKeys(keys: List<SignalKey>): List<SignalGroup> {
+            val byCategory = keys.groupBy { it.category }
+            val categoryOrder = listOf("verification", "reaction")
+            val categoryLabels = mapOf("verification" to "Verificação", "reaction" to "Reação")
+
+            return categoryOrder.mapNotNull { cat ->
+                val signals = byCategory[cat] ?: return@mapNotNull null
+                if (signals.isEmpty()) return@mapNotNull null
+                val pairs = mutableListOf<SignalPair>()
+                val used = mutableSetOf<String>()
+                for (signal in signals) {
+                    if (signal.key in used) continue
+                    val opp = signal.opposite?.let { oppKey -> signals.find { it.key == oppKey } }
+                    if (opp != null) {
+                        pairs.add(SignalPair(left = signal, right = opp))
+                        used.add(signal.key)
+                        used.add(opp.key)
+                    } else {
+                        pairs.add(SignalPair(left = signal, right = signal))
+                        used.add(signal.key)
+                    }
+                }
+                SignalGroup(category = cat, label = categoryLabels[cat] ?: cat.replaceFirstChar { it.uppercase() }, pairs = pairs)
+            }
+        }
     }
 }
 
 data class PostSignals(
     val signals: Map<String, Int>,
-    val userSignals: List<String>
+    val mySignals: List<String>
 ) {
     companion object {
         fun fromJson(json: JSONObject): PostSignals {
             val signalsObj = json.optJSONObject("signals") ?: JSONObject()
-            val userArr = json.optJSONArray("user_signals") ?: JSONArray()
+            val userArr = json.optJSONArray("my_signals") ?: json.optJSONArray("user_signals") ?: JSONArray()
             val map = mutableMapOf<String, Int>()
             signalsObj.keys().forEach { key -> map[key] = signalsObj.optInt(key, 0) }
             val userList = (0 until userArr.length()).map { userArr.getString(it) }
-            return PostSignals(signals = map, userSignals = userList)
+            return PostSignals(signals = map, mySignals = userList)
+        }
+    }
+}
+
+data class SyncSignalsResponse(
+    val added: List<String>,
+    val removed: List<String>,
+    val signals: Map<String, Int>,
+    val mySignals: List<String>
+) {
+    companion object {
+        fun fromJson(json: JSONObject): SyncSignalsResponse {
+            val addedArr = json.optJSONArray("added") ?: JSONArray()
+            val removedArr = json.optJSONArray("removed") ?: JSONArray()
+            val signalsObj = json.optJSONObject("signals") ?: JSONObject()
+            val myArr = json.optJSONArray("my_signals") ?: JSONArray()
+            val map = mutableMapOf<String, Int>()
+            signalsObj.keys().forEach { key -> map[key] = signalsObj.optInt(key, 0) }
+            return SyncSignalsResponse(
+                added = (0 until addedArr.length()).map { addedArr.getString(it) },
+                removed = (0 until removedArr.length()).map { removedArr.getString(it) },
+                signals = map,
+                mySignals = (0 until myArr.length()).map { myArr.getString(it) }
+            )
         }
     }
 }
@@ -276,6 +412,20 @@ fun toHashtag(text: String): String {
         word.replaceFirstChar { it.uppercase() }
     }
     return "#$camel"
+}
+
+fun formatCompactNumber(value: Int): String = when {
+    value < 1_000 -> "$value"
+    value < 10_000 -> {
+        val k = value / 100
+        if (k % 10 == 0) "${k / 10}k" else "${k / 10}.${k % 10}k"
+    }
+    value < 1_000_000 -> "${value / 1_000}k"
+    value < 10_000_000 -> {
+        val m = value / 100_000
+        if (m % 10 == 0) "${m / 10}M" else "${m / 10}.${m % 10}M"
+    }
+    else -> "${value / 1_000_000}M"
 }
 
 fun formatTimeAgo(isoDate: String): String {

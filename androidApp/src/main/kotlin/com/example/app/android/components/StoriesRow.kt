@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,8 +23,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
@@ -43,10 +49,18 @@ data class StoryItem(
     val hasUnread: Boolean = true
 )
 
+data class StoryTapInfo(
+    val story: StoryItem,
+    val centerX: Float,
+    val centerY: Float,
+    val size: Float
+)
+
 @Composable
 fun StoriesRow(
     stories: List<StoryItem>,
     onStoryClick: (StoryItem) -> Unit = {},
+    onStoryTap: (StoryTapInfo) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val colors = AppTheme.colors
@@ -72,7 +86,6 @@ fun StoriesRow(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .width(62.dp)
-                    .clickable { onStoryClick(story) }
             ) {
                 val borderBrush = Brush.sweepGradient(
                     listOf(
@@ -83,9 +96,27 @@ fun StoriesRow(
                     )
                 )
 
+                var circleBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+
                 Box(
                     modifier = Modifier
                         .size(55.dp)
+                        .onGloballyPositioned { coords ->
+                            circleBounds = coords.boundsInRoot()
+                        }
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            onStoryTap(
+                                StoryTapInfo(
+                                    story = story,
+                                    centerX = circleBounds.center.x,
+                                    centerY = circleBounds.center.y,
+                                    size = circleBounds.width
+                                )
+                            )
+                        }
                         .then(
                             if (story.hasUnread) {
                                 Modifier.drawBehind {

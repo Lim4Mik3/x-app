@@ -18,7 +18,40 @@
     <string name="select_location">Seleccionar ubicación</string>
     <string name="language_label">Idioma</string>
     <string name="back">Volver</string>
-    <string name="skip_media">Saltar</string>
+    <string name="skip_media">Omitir</string>
+
+    <!-- Camera -->
+    <string name="camera_close">Cerrar</string>
+    <string name="camera_hint">Toca para foto · Mantén para video</string>
+    <string name="camera_permission_denied">Permiso de cámara denegado. Abre la configuración para permitir el acceso.</string>
+    <string name="camera_permission_needed">La app necesita acceso a la cámara y micrófono para capturar fotos y videos.</string>
+    <string name="open_settings">Abrir Configuración</string>
+    <string name="allow_access">Permitir Acceso</string>
+
+    <!-- Mood -->
+    <string name="mood_title">Estado</string>
+    <string name="mood_calm">Tranquilo</string>
+    <string name="mood_updated">Actualizado hace 2min</string>
+    <string name="time_ago">hace 2min</string>
+
+    <!-- Map -->
+    <string name="search_address">Buscar dirección…</string>
+    <string name="move_map_to_select">Mueve el mapa para seleccionar</string>
+    <string name="confirm_location">Confirmar ubicación</string>
+    <string name="location_precision_title">¿Dónde ocurrió?</string>
+    <string name="location_precision_hint">Marca en el mapa el lugar exacto del hecho.</string>
+
+    <!-- Review Post -->
+    <string name="review_title">Revisar publicación</string>
+    <string name="review_location_label">Ubicación</string>
+    <string name="review_text_label">Contenido</string>
+    <string name="confirm_publish">Confirmar y publicar</string>
+    <string name="review_media_label">Multimedia</string>
+    <string name="review_subtitle">Revisa los detalles antes de publicar</string>
+    <string name="no_media_attached">Sin medios adjuntos</string>
+
+    <!-- Stories -->
+    <string name="stories_in_city">En %s</string>
 
     <!-- Profile -->
     <string name="profile_section_personal">Información Personal</string>
@@ -37,4 +70,21 @@
     <string name="connected_connect">Conectar</string>
     <string name="profile_change_photo">Cambiar foto</string>
     <string name="profile_logout">Cerrar sesión</string>
+
+    <!-- Signals -->
+    <string name="signal_title">Señala y reacciona</string>
+    <string name="signal_subtitle">Contribuye señalando con lo que sabes y reacciona.</string>
+    <string name="signal_confirm">Confirmar</string>
+    <string name="signal_section_verification">Verificación</string>
+    <string name="signal_section_reaction">Reacción</string>
+    <string name="signal_unsupported">Señales no disponibles para este tipo de publicación.</string>
+    <string name="toast_signal_error">Error al guardar se\u00f1ales. Int\u00e9ntalo de nuevo.</string>
+
+    <!-- Login -->
+    <string name="login_title">Bienvenido a Sinal</string>
+    <string name="login_subtitle">Ent\u00e9rate de lo que pasa cerca de ti</string>
+    <string name="login_header">Para continuar, inicia sesi\u00f3n</string>
+    <string name="login_google">Continuar con Google</string>
+    <string name="login_community">\u00a1Ser\u00e1 genial tenerte. Contribuye con todos!</string>
+    <string name="login_terms">Al continuar, aceptas nuestros T\u00e9rminos de Uso y Pol\u00edtica de Privacidad</string>
 </resources>
